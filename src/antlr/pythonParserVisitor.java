@@ -1,4 +1,4 @@
-// Generated from C:/Users/Admin/Desktop/compiler project/flask_compiler/grammars/pythonParser.g4 by ANTLR 4.13.2
+// Generated from C:/Users/Admin/Desktop/flask_compiler_2/grammars/pythonParser.g4 by ANTLR 4.13.2
  package antlr; 
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
@@ -207,11 +207,11 @@ public interface pythonParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitExprLine(pythonParser.ExprLineContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link pythonParser#expr}.
+	 * Visit a parse tree produced by {@link pythonParser#ternaryExpr}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitExpr(pythonParser.ExprContext ctx);
+	T visitTernaryExpr(pythonParser.TernaryExprContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link pythonParser#orExpr}.
 	 * @param ctx the parse tree
@@ -310,6 +310,18 @@ public interface pythonParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitIfBlock(pythonParser.IfBlockContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link pythonParser#elifBlock}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitElifBlock(pythonParser.ElifBlockContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link pythonParser#elseBlock}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitElseBlock(pythonParser.ElseBlockContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link pythonParser#forBlock}.
 	 * @param ctx the parse tree

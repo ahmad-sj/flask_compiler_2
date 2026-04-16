@@ -55,7 +55,7 @@ name                       // finish
     ;
 
 assignLine                 // finish
-    : target EQUAL expr
+    : target EQUAL ternaryExpr
     ;
 
 target                  // not necessary if all children visit methods are implemented
@@ -75,7 +75,7 @@ valueTrailer                // not necessary if all children visit methods are i
 
 dotTrailer: DOT NAME;       // done
 
-squareTrailer: OPEND_SQUAR_BRAKET expr CLOSED_SQUAR_BRAKET;     // done
+squareTrailer: LSB ternaryExpr RSB;     // done
 
 baseValue                   // not necessary if all children visit methods are implemented
     : id                    // done
@@ -85,21 +85,21 @@ baseValue                   // not necessary if all children visit methods are i
     | parenthedGenExpr
     ;
 
-parenthedGenExpr: OPEND_NORMAL_BRAKET genExpr CLOSED_NORMAL_BRAKET;
+parenthedGenExpr: LPAREN genExpr RPAREN;
 
-parenthedExpr: OPEND_NORMAL_BRAKET expr CLOSED_NORMAL_BRAKET;
+parenthedExpr: LPAREN ternaryExpr RPAREN;
 
 tupleExpr
-    : OPEND_NORMAL_BRAKET expr COMMA expr (COMMA expr)* COMMA? CLOSED_NORMAL_BRAKET
+    : LPAREN ternaryExpr COMMA ternaryExpr (COMMA ternaryExpr)* COMMA? RPAREN
     ;
 
 genExpr
-    : value FOR NAME IN expr (IF expr)?
+    : value FOR NAME IN ternaryExpr (IF ternaryExpr)?
     ;
 
 
 callArgs                // finish
-    : OPEND_NORMAL_BRAKET callList CLOSED_NORMAL_BRAKET
+    : LPAREN callList RPAREN
     ;
 
 callList                // finish
@@ -107,31 +107,31 @@ callList                // finish
     ;
 
 callArg                     //finish
-    : NAME EQUAL expr
-    | expr
+    : NAME EQUAL ternaryExpr
+    | ternaryExpr
     ;
 
 // callExpr: دعم function calls مع generator expressions
 singleExpr
     : NOT singleExpr
     | value
-    | id OPEND_NORMAL_BRAKET (callArg (COMMA callArg)*)? CLOSED_NORMAL_BRAKET
+    | id LPAREN (callArg (COMMA callArg)*)? RPAREN
     ;
 
 returnLine
     :     RETURN  returnExpr?   ;           //finish
 
 returnExpr
-    : expr (COMMA expr)+    # tupleReturnWithoutParens      //done
-    | expr                  # singleReturn                  //done
+    : ternaryExpr (COMMA ternaryExpr)+    # tupleReturnWithoutParens      //done
+    | ternaryExpr                         # singleReturn                  //done
     ;
 
 exprLine                // finish
-    : expr
+    : ternaryExpr
     ;
 
-expr
-    : orExpr (IF orExpr ELSE expr)?         //done
+ternaryExpr
+    : orExpr (IF orExpr ELSE ternaryExpr)?         //done
     ;
 
 orExpr                  // done
@@ -179,7 +179,7 @@ decorator
     ;
 
 funcArgs
-    : OPEND_NORMAL_BRAKET argsNames? CLOSED_NORMAL_BRAKET           //finish
+    : LPAREN argsNames? RPAREN           //finish
     ;
 
 argsNames
@@ -196,30 +196,38 @@ block
 
 
 ifBlock                             //finish
-    : IF expr COLON nl* block
-      (ELIF expr COLON nl* block)*
-      (ELSE COLON nl* block)?
+    : IF ternaryExpr COLON nl* block
+      (elifBlock)*
+      (elseBlock)?
+    ;
+
+elifBlock
+    : ELIF ternaryExpr COLON nl* block
+    ;
+
+elseBlock
+    : ELSE COLON nl* block
     ;
 
 forBlock
-    : FOR NAME IN expr COLON nl block       //done
+    : FOR NAME IN ternaryExpr COLON nl block       //done
     ;
 
 whileBlock
-    : WHILE expr COLON nl block                 //done
+    : WHILE ternaryExpr COLON nl block                 //done
     ;
 
 // Lists
 listVal                 // done
-    : OPEND_SQUAR_BRAKET
+    : LSB
       (NEWLINE | WS)*
       listItem? (listItemSeparator listItem)* listItemSeparator?
       (NEWLINE | WS)*
-      CLOSED_SQUAR_BRAKET
+      RSB
     ;
 
 listItem                // not necessary
-    : expr (NEWLINE | WS)*
+    : ternaryExpr (NEWLINE | WS)*
     ;
 
 listItemSeparator       // not necessary
@@ -228,15 +236,15 @@ listItemSeparator       // not necessary
 
 // Dictionaries
 dictVal                 // done
-    : OPEN_CURLY_BRAKET
+    : LBRACE
       (NEWLINE | WS)*
       dictItem? (dictItemSeparator dictItem)* dictItemSeparator?
       (NEWLINE | WS)*
-      CLOSED_CURLY_BRAKET
+      RBRACE
     ;
 
 dictItem                // done
-    : literal COLON expr (NEWLINE | WS)*
+    : literal COLON ternaryExpr (NEWLINE | WS)*
     ;
 
 dictItemSeparator       // not necessary

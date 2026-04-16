@@ -39,4 +39,32 @@ public class Decorator extends Node {
                 );
     }
 
+    @Override
+    public String print(int level) {
+        String indent = getIndent(level);
+
+        StringBuilder args = new StringBuilder();
+
+        if (callArgs != null) {
+            for (int i = 0; i < callArgs.size(); i++) {
+                args.append(callArgs.get(i).toString());
+
+                if (i + 1 < callArgs.size())
+                    args.append(", ");
+            }
+        }
+
+        return "decorator:\n"
+                + (callArgs == null ?
+                (
+                        indent + "├─ line no: " + lineNumber + "\n"
+                                + indent + "└─ name: " + name
+                ) :
+                (
+                        indent + "├─ line no: " + lineNumber + "\n"
+                                + indent + "├─ name: " + name + "\n"
+                                + indent + "└─ args: " + args.toString()
+                )
+        );
+    }
 }

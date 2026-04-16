@@ -22,7 +22,7 @@
 //    }
 //}
 
-package models.python.simpleStatements;
+package models.python.simple_statements;
 
 import models.Node;
 

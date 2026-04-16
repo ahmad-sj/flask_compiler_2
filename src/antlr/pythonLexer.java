@@ -1,4 +1,4 @@
-// Generated from C:/Users/Admin/Desktop/compiler project/flask_compiler/grammars/pythonLexer.g4 by ANTLR 4.13.2
+// Generated from C:/Users/Admin/Desktop/flask_compiler_2/grammars/pythonLexer.g4 by ANTLR 4.13.2
 
 package antlr;
 import org.antlr.v4.runtime.*;
@@ -26,10 +26,9 @@ public class pythonLexer extends Lexer {
 		FROM=17, AS=18, IN=19, TRUE=20, FALSE=21, NONE=22, AND=23, OR=24, NOT=25, 
 		EQUAL=26, NOTEQUAL=27, EQUALEQUAL=28, LESSTHAN=29, GREATERTHAN=30, LESSOREQUAL=31, 
 		GREATEROREQUAL=32, PLUS=33, MINUS=34, STAR=35, SLASH=36, PERCENT=37, COLON=38, 
-		COMMA=39, DOT=40, AT=41, ARROW=42, SEMICOLON=43, OPEND_NORMAL_BRAKET=44, 
-		CLOSED_NORMAL_BRAKET=45, OPEND_SQUAR_BRAKET=46, CLOSED_SQUAR_BRAKET=47, 
-		OPEN_CURLY_BRAKET=48, CLOSED_CURLY_BRAKET=49, NAME=50, FLOAT=51, INT=52, 
-		STRING=53, COMMENT=54;
+		COMMA=39, DOT=40, AT=41, ARROW=42, SEMICOLON=43, LPAREN=44, RPAREN=45, 
+		LSB=46, RSB=47, LBRACE=48, RBRACE=49, NAME=50, FLOAT=51, INT=52, STRING=53, 
+		COMMENT=54;
 	public static String[] channelNames = {
 		"DEFAULT_TOKEN_CHANNEL", "HIDDEN"
 	};
@@ -45,9 +44,8 @@ public class pythonLexer extends Lexer {
 			"TRUE", "FALSE", "NONE", "AND", "OR", "NOT", "EQUAL", "NOTEQUAL", "EQUALEQUAL", 
 			"LESSTHAN", "GREATERTHAN", "LESSOREQUAL", "GREATEROREQUAL", "PLUS", "MINUS", 
 			"STAR", "SLASH", "PERCENT", "COLON", "COMMA", "DOT", "AT", "ARROW", "SEMICOLON", 
-			"OPEND_NORMAL_BRAKET", "CLOSED_NORMAL_BRAKET", "OPEND_SQUAR_BRAKET", 
-			"CLOSED_SQUAR_BRAKET", "OPEN_CURLY_BRAKET", "CLOSED_CURLY_BRAKET", "NAME", 
-			"FLOAT", "INT", "STRING", "COMMENT"
+			"LPAREN", "RPAREN", "LSB", "RSB", "LBRACE", "RBRACE", "NAME", "FLOAT", 
+			"INT", "STRING", "COMMENT"
 		};
 	}
 	public static final String[] ruleNames = makeRuleNames();
@@ -70,9 +68,8 @@ public class pythonLexer extends Lexer {
 			"FROM", "AS", "IN", "TRUE", "FALSE", "NONE", "AND", "OR", "NOT", "EQUAL", 
 			"NOTEQUAL", "EQUALEQUAL", "LESSTHAN", "GREATERTHAN", "LESSOREQUAL", "GREATEROREQUAL", 
 			"PLUS", "MINUS", "STAR", "SLASH", "PERCENT", "COLON", "COMMA", "DOT", 
-			"AT", "ARROW", "SEMICOLON", "OPEND_NORMAL_BRAKET", "CLOSED_NORMAL_BRAKET", 
-			"OPEND_SQUAR_BRAKET", "CLOSED_SQUAR_BRAKET", "OPEN_CURLY_BRAKET", "CLOSED_CURLY_BRAKET", 
-			"NAME", "FLOAT", "INT", "STRING", "COMMENT"
+			"AT", "ARROW", "SEMICOLON", "LPAREN", "RPAREN", "LSB", "RSB", "LBRACE", 
+			"RBRACE", "NAME", "FLOAT", "INT", "STRING", "COMMENT"
 		};
 	}
 	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
@@ -117,12 +114,8 @@ public class pythonLexer extends Lexer {
 	    private LinkedList<Token> pending = new LinkedList<>();
 	    private int opened = 0;
 
-
-	    public pythonLexer(CharStream input, int i) {
-	        super(input);
-	        indents.push(0);
-	        _interp = new LexerATNSimulator(this,_ATN,_decisionToDFA,_sharedContextCache);
-
+	    {
+	       indents.push(0);
 	    }
 
 	  @Override
@@ -176,12 +169,12 @@ public class pythonLexer extends Lexer {
 
 	        if (indent > prev) {
 	            indents.push(indent);
-	            pending.add(new CommonToken(INDENT, ""));
+	            pending.add(new CommonToken(INDENT, "iiindent"));
 	        }
 	        else if (indent < prev) {
 	            while (indents.peek() > indent) {
 	                indents.pop();
-	                pending.add(new CommonToken(DEDENT, ""));
+	                pending.add(new CommonToken(DEDENT, "dddedent"));
 	            }
 	            if (indents.peek() != indent) {
 	                throw new RuntimeException("IndentationError: inconsistent indentation");
@@ -231,22 +224,22 @@ public class pythonLexer extends Lexer {
 			NEWLINE_action((RuleContext)_localctx, actionIndex);
 			break;
 		case 41:
-			OPEND_NORMAL_BRAKET_action((RuleContext)_localctx, actionIndex);
+			LPAREN_action((RuleContext)_localctx, actionIndex);
 			break;
 		case 42:
-			CLOSED_NORMAL_BRAKET_action((RuleContext)_localctx, actionIndex);
+			RPAREN_action((RuleContext)_localctx, actionIndex);
 			break;
 		case 43:
-			OPEND_SQUAR_BRAKET_action((RuleContext)_localctx, actionIndex);
+			LSB_action((RuleContext)_localctx, actionIndex);
 			break;
 		case 44:
-			CLOSED_SQUAR_BRAKET_action((RuleContext)_localctx, actionIndex);
+			RSB_action((RuleContext)_localctx, actionIndex);
 			break;
 		case 45:
-			OPEN_CURLY_BRAKET_action((RuleContext)_localctx, actionIndex);
+			LBRACE_action((RuleContext)_localctx, actionIndex);
 			break;
 		case 46:
-			CLOSED_CURLY_BRAKET_action((RuleContext)_localctx, actionIndex);
+			RBRACE_action((RuleContext)_localctx, actionIndex);
 			break;
 		}
 	}
@@ -273,42 +266,42 @@ public class pythonLexer extends Lexer {
 			break;
 		}
 	}
-	private void OPEND_NORMAL_BRAKET_action(RuleContext _localctx, int actionIndex) {
+	private void LPAREN_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
 		case 1:
 			 openBrace(); 
 			break;
 		}
 	}
-	private void CLOSED_NORMAL_BRAKET_action(RuleContext _localctx, int actionIndex) {
+	private void RPAREN_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
 		case 2:
 			 closeBrace(); 
 			break;
 		}
 	}
-	private void OPEND_SQUAR_BRAKET_action(RuleContext _localctx, int actionIndex) {
+	private void LSB_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
 		case 3:
 			 openBrace(); 
 			break;
 		}
 	}
-	private void CLOSED_SQUAR_BRAKET_action(RuleContext _localctx, int actionIndex) {
+	private void RSB_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
 		case 4:
 			 closeBrace(); 
 			break;
 		}
 	}
-	private void OPEN_CURLY_BRAKET_action(RuleContext _localctx, int actionIndex) {
+	private void LBRACE_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
 		case 5:
 			 openBrace(); 
 			break;
 		}
 	}
-	private void CLOSED_CURLY_BRAKET_action(RuleContext _localctx, int actionIndex) {
+	private void RBRACE_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
 		case 6:
 			 closeBrace(); 

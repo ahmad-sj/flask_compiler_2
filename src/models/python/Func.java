@@ -24,68 +24,44 @@ public class Func extends Node {
                 "\nfunc name: " + funcName.toString() + "\n" +
                 (decorator != null ? "func decorator: " + decorator.toString() : "") + "\n" +
                 (funcArgs != null ? "func args: " + funcArgs : "") + "\n" +
-                (funcBlock != null ? "``````` func body start ```````\n" + funcBlock.toString() + "\n``````` func body end ```````": "")
+                (funcBlock != null ? "``````` func body start ```````\n" + funcBlock.toString() + "\n``````` func body end ```````" : "")
                 ;
     }
 
-//    @Override
-//    public String print(int level) {
-//
-//        return "func name: " + funcName.toString() + "\n" +
-//                (decorator != null ? "func decorator: " + decorator.toString() : "") + "\n" +
-//                (funcArgs != null ? "func args: " + funcArgs : "") + "\n" +
-//                (funcBlock != null ? "func boyd: " + funcBlock.toString() : "")
-//                ;
-//    }
-//        String indent = getIndent(level);
-//
-//        StringBuilder args = new StringBuilder();
-//
-//        if (funcArgs != null) {
-//            for (int i = 0; i < funcArgs.size(); i++) {
-//                args.append(funcArgs.get(i).toString());
-//
-//                if (i + 1 < funcArgs.size())
-//                    args.append(", ");
-//            }
-//        }
-//
-//
-//        return "func block\n" +
-//                (decorator == null ?
-//                        (funcBlock == null ?
-//                                (funcArgs == null
-//                                        ? indent + "└─ line no: " + lineNumber + "\n"
-//                                        : indent + "├─ line no: " + lineNumber + "\n"
-//                                        + indent + "└─ args: " + args.toString() + "\n"
-//                                ) :
-//                                (funcArgs == null
-//                                        ? indent + "├─ line no: " + lineNumber + "\n"
-//                                        + indent + "└─ func body " + funcBlock.print(level + 2)
-//                                        : indent + "├─ line no: " + lineNumber + "\n"
-//                                        + indent + "├─ args: " + args.toString() + "\n"
-//                                        + indent + "└─ func body " + funcBlock.print(level + 2)
-//                                )
-//                        ) :
-//                        (funcBlock == null ?
-//                                (funcArgs == null
-//                                        ? indent + "├─ line no: " + lineNumber + "\n"
-//                                        + indent + "└─ decorator: " + decorator.print(level + 2)
-//                                        : indent + "├─ line no: " + lineNumber + "\n"
-//                                        + indent + "├─ args: " + args.toString() + "\n"
-//                                        + indent + "└─ decorator: " + decorator.print(level + 2)
-//                                ) :
-//                                (funcArgs == null
-//                                        ? indent + "├─ line no: " + lineNumber + "\n"
-//                                        + indent + "├─ decorator: " + decorator.print(level + 2)
-//                                        + indent + "└─ func body: " + funcBlock.print(level + 2)
-//                                        : indent + "├─ line no: " + lineNumber + "\n"
-//                                        + indent + "├─ args: " + args.toString() + "\n"
-//                                        + indent + "├─ decorator: " + decorator.print(level + 2)
-//                                        + indent + "└─ func body: " + funcBlock.print(level + 2)
-//                                )
-//                        )
-//                );
-//
-//    }
+    @Override
+    public String print(int level) {
+
+        String indent = getIndent(level);
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("function:")
+                .append("\n").append(indent).append("├─ line no: ").append(this.lineNumber)
+                .append("\n").append(indent).append("├─ name: ").append(funcName.toString())
+        ;
+
+        if (decorator != null) {
+            sb.append("\n").append(indent).append("├─ ").append(decorator.print(level + 1));
+        }
+
+        if (funcArgs != null) {
+            StringBuilder args = new StringBuilder();
+
+            for (int i = 0; i < funcArgs.size(); i++) {
+                args.append(funcArgs.get(i));
+
+                if (i + 1 < funcArgs.size())
+                    args.append(", ");
+            }
+
+            sb.append("\n").append(indent).append("├─ args: ").append(args);
+        }
+
+        if (funcBlock != null) {
+            sb.append("\n").append(indent).append("├─ func body: ").append(funcBlock.print(level));
+        }
+
+        sb.append(indent).append("└─ ");
+        return sb.toString();
+    }
 }

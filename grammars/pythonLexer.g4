@@ -17,12 +17,8 @@ tokens { INDENT, DEDENT }
     private LinkedList<Token> pending = new LinkedList<>();
     private int opened = 0;
 
-
-    public pythonLexer(CharStream input, int i) {
-        super(input);
-        indents.push(0);
-        _interp = new LexerATNSimulator(this,_ATN,_decisionToDFA,_sharedContextCache);
-
+    {
+       indents.push(0);
     }
 
   @Override
@@ -76,12 +72,12 @@ tokens { INDENT, DEDENT }
 
         if (indent > prev) {
             indents.push(indent);
-            pending.add(new CommonToken(INDENT, ""));
+            pending.add(new CommonToken(INDENT, "iiindent"));
         }
         else if (indent < prev) {
             while (indents.peek() > indent) {
                 indents.pop();
-                pending.add(new CommonToken(DEDENT, ""));
+                pending.add(new CommonToken(DEDENT, "dddedent"));
             }
             if (indents.peek() != indent) {
                 throw new RuntimeException("IndentationError: inconsistent indentation");
@@ -183,12 +179,12 @@ SEMICOLON       : ';';
 
 // Brackets (IMPORTANT)
 
-OPEND_NORMAL_BRAKET   : '(' { openBrace(); };
-CLOSED_NORMAL_BRAKET  : ')' { closeBrace(); };
-OPEND_SQUAR_BRAKET    : '[' { openBrace(); };
-CLOSED_SQUAR_BRAKET   : ']' { closeBrace(); };
-OPEN_CURLY_BRAKET     : '{' { openBrace(); };
-CLOSED_CURLY_BRAKET   : '}' { closeBrace(); };
+LPAREN   : '(' { openBrace(); };
+RPAREN  : ')' { closeBrace(); };
+LSB    : '[' { openBrace(); };
+RSB   : ']' { closeBrace(); };
+LBRACE     : '{' { openBrace(); };
+RBRACE   : '}' { closeBrace(); };
 
 
 // Literals & Identifiers

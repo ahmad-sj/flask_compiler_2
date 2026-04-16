@@ -12,25 +12,41 @@ import symbols.SymbolTable;
 import visitors.TemplateVisitor;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
-public class TemplateCompiler {
+public class TemplatesHandler {
 
     ArrayList<String> files;
     SymbolTable symbolTable;
+    Path path;
 
-    public TemplateCompiler(ArrayList<String> files) {
-        this.files = files;
-        this.symbolTable = new SymbolTable();
-    }
-
-    public TemplateCompiler(ArrayList<String> files, SymbolTable symbolTable) {
-        this.files = files;
+    public TemplatesHandler(Path path, SymbolTable symbolTable) {
+        this.path = path;
         this.symbolTable = symbolTable;
     }
 
-    public void compile() {
+    public void start() {
+        // creating an array with file names to be parsed
+        ArrayList<String> fileNames = new ArrayList<>();
+        fileNames.add("tests/base.html");
+        fileNames.add("tests/index.html");
+        fileNames.add("tests/add.html");
+        fileNames.add("tests/detail.html");
+        fileNames.add("tests/tests.html");
+
+        // getting files full paths
+        ArrayList<String> files = new ArrayList<>();
+        for (String fileName : fileNames) {
+
+            // get full path for file name number i
+            Path filePathObject = path.resolve(fileName);
+
+            // add file full path to files array
+            files.add(filePathObject.toString());
+        }
+
         templateParser parser;
 
         for (int i = 0; i < files.size(); i++) {

@@ -1,4 +1,4 @@
-package models.python.simpleStatements.ReturnExpr;
+package models.python.simple_statements.return_expr;
 
 import models.Node;
 

@@ -1,4 +1,4 @@
-// Generated from C:/Users/Admin/Desktop/compiler project/flask_compiler/grammars/pythonParser.g4 by ANTLR 4.13.2
+// Generated from C:/Users/Admin/Desktop/flask_compiler_2/grammars/pythonParser.g4 by ANTLR 4.13.2
  package antlr; 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
@@ -336,15 +336,15 @@ public interface pythonParserListener extends ParseTreeListener {
 	 */
 	void exitExprLine(pythonParser.ExprLineContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link pythonParser#expr}.
+	 * Enter a parse tree produced by {@link pythonParser#ternaryExpr}.
 	 * @param ctx the parse tree
 	 */
-	void enterExpr(pythonParser.ExprContext ctx);
+	void enterTernaryExpr(pythonParser.TernaryExprContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link pythonParser#expr}.
+	 * Exit a parse tree produced by {@link pythonParser#ternaryExpr}.
 	 * @param ctx the parse tree
 	 */
-	void exitExpr(pythonParser.ExprContext ctx);
+	void exitTernaryExpr(pythonParser.TernaryExprContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link pythonParser#orExpr}.
 	 * @param ctx the parse tree
@@ -509,6 +509,26 @@ public interface pythonParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitIfBlock(pythonParser.IfBlockContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link pythonParser#elifBlock}.
+	 * @param ctx the parse tree
+	 */
+	void enterElifBlock(pythonParser.ElifBlockContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link pythonParser#elifBlock}.
+	 * @param ctx the parse tree
+	 */
+	void exitElifBlock(pythonParser.ElifBlockContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link pythonParser#elseBlock}.
+	 * @param ctx the parse tree
+	 */
+	void enterElseBlock(pythonParser.ElseBlockContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link pythonParser#elseBlock}.
+	 * @param ctx the parse tree
+	 */
+	void exitElseBlock(pythonParser.ElseBlockContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link pythonParser#forBlock}.
 	 * @param ctx the parse tree

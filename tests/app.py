@@ -42,7 +42,6 @@ def add():
         details = request.form['details']
         image = request.form['image'] or "https://via.placeholder.com/400x300?text=No+Image"
 
-        # Add new product
         products.append({
             "id": next_id(),
             "name": name,

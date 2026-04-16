@@ -9,20 +9,15 @@ import models.jinja.trailers.CallTrailer;
 import models.jinja.trailers.MemberTrailer;
 import models.jinja.trailers.SubTrailer;
 import models.python.*;
-import models.python.Exprs.CompareExpression;
-import models.python.Exprs.EqualExpression;
-import models.python.Exprs.MulExpression;
-import models.python.IFSTMT.ElifNode;
-import models.python.IFSTMT.ForNode;
-import models.python.IFSTMT.IfNode;
-import models.python.IFSTMT.WhileNode;
+import models.python.expressions.CompareExpression;
+import models.python.expressions.EqualExpression;
+import models.python.expressions.GenExpression;
+import models.python.expressions.MulExpression;
+import models.python.blocks.*;
 import models.python.literals.*;
-import models.python.simpleStatements.ExprLine;
-import models.python.simpleStatements.Pass;
-import models.python.simpleStatements.ReturnLine;
-import models.python.simpleStatements.importLines.MultiImport;
-import models.python.simpleStatements.importLines.SingleImport;
-import models.python.simpleStatements.AssignLine;
+import models.python.simple_statements.*;
+import models.python.simple_statements.import_lines.MultiImport;
+import models.python.simple_statements.import_lines.SingleImport;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
@@ -57,7 +52,6 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
 
         return statementList;
     }
-
 
     // simple statements
 
@@ -104,16 +98,15 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
         return multiImport;
     }
 
-
     @Override
     public Node visitAssignLine(pythonParser.AssignLineContext ctx) {
         Node target = this.visit(ctx.target());
         target.setNodeName("assign target");
         target.setLineNumber(ctx.target().getStart().getLine());
 
-        Node expr = this.visit(ctx.expr());
+        Node expr = this.visit(ctx.ternaryExpr());
         expr.setNodeName("assigned expr");
-        expr.setLineNumber(ctx.expr().getStart().getLine());
+        expr.setLineNumber(ctx.ternaryExpr().getStart().getLine());
 
         AssignLine assignLine = new AssignLine(target, expr);
         assignLine.setNodeName("assign line");
@@ -139,7 +132,6 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
         return returnLine;
     }
 
-
     @Override
     public Node visitTupleReturnWithoutParens(pythonParser.TupleReturnWithoutParensContext ctx) {
         return visitChildren(ctx); // مجرد default behavior
@@ -150,27 +142,12 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
         return visitChildren(ctx); // مجرد default behavior
     }
 
-
-//    @Override
-//    public Node visitExprLine(pythonParser.ExprLineContext ctx) {
-//
-//        Node expr = this.visit(ctx.expr());
-//        expr.setNodeName("expr");
-//        expr.setLineNumber(ctx.expr().getStart().getLine());
-//
-//        ExprLine exprLine = new ExprLine(expr);
-//        exprLine.setNodeName("expr line");
-//        exprLine.setLineNumber(ctx.getStart().getLine());
-//
-//        return exprLine;
-//    }
-
     @Override
     public Node visitExprLine(pythonParser.ExprLineContext ctx) {
 
-        Node expr = visit(ctx.expr());
+        Node expr = visit(ctx.ternaryExpr());
         expr.setNodeName("expr");
-        expr.setLineNumber(ctx.expr().getStart().getLine());
+        expr.setLineNumber(ctx.ternaryExpr().getStart().getLine());
 
         ExprLine exprLine = new ExprLine(expr);
         exprLine.setNodeName("expr line");
@@ -180,23 +157,51 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitExpr(pythonParser.ExprContext ctx) {
-        // زيارة الجزء الأول قبل IF
-        Node conditionNode = visit(ctx.orExpr(0));
+    public Node visitTernaryExpr(pythonParser.TernaryExprContext ctx) {
+        Node trueExpr = visit(ctx.orExpr(0));
 
-        // إنشاء AST node
-        models.python.expressions.ExprNode exprNode = new models.python.expressions.ExprNode(conditionNode, ctx.getStart().getLine());
+        // expr is not a ternary expr
+        if (ctx.IF() == null) {
+            return trueExpr;
+        } else {
+            trueExpr.setNodeName("ternary trueExpr");
 
-        // إذا كان ternary expression موجود
-        if (ctx.IF() != null) {
-            Node ifNode = visit(ctx.orExpr(1));  // الجزء بعد IF
-            Node elseNode = visit(ctx.expr());   // الجزء بعد ELSE (قد يكون expr كامل)
-            exprNode.setTernary(ifNode, elseNode);
+            Node condition = visit(ctx.orExpr(1));
+            trueExpr.setNodeName("ternary condition");
+
+            Node falseExpr = visit(ctx.ternaryExpr());
+            trueExpr.setNodeName("ternary falseExpr");
+
+            TernaryExpr ternaryExpr = new TernaryExpr(trueExpr, condition, falseExpr);
+            ternaryExpr.setLineNumber(ctx.getStart().getLine());
+            ternaryExpr.setNodeName("ternary expr");
+            return ternaryExpr;
         }
-
-        return exprNode;
     }
 
+    @Override
+    public Node visitParenthedGenExpr(pythonParser.ParenthedGenExprContext ctx) {
+        return this.visit(ctx.genExpr());
+    }
+
+    @Override
+    public Node visitGenExpr(pythonParser.GenExprContext ctx) {
+        Node value = this.visit(ctx.value());
+
+        IdType name = new IdType(ctx.NAME().getText());
+        name.setNodeName("id");
+        name.setLineNumber(ctx.NAME().getSymbol().getLine());
+
+        Node inExpr = this.visit(ctx.ternaryExpr(0));
+        Node ifExpr = null;
+        if (ctx.ternaryExpr(1) != null)
+            ifExpr = this.visit(ctx.ternaryExpr(1));
+
+        GenExpression genExpr = new GenExpression(value, name, inExpr, ifExpr);
+        genExpr.setNodeName("genExpr");
+        genExpr.setLineNumber(ctx.start.getLine());
+        return genExpr;
+    }
 
     @Override
     public Node visitPass(pythonParser.PassContext ctx) {
@@ -276,7 +281,7 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
 
     @Override
     public Node visitSquareTrailer(pythonParser.SquareTrailerContext ctx) {
-        Node expr = this.visit(ctx.expr());
+        Node expr = this.visit(ctx.ternaryExpr());
 
         SubTrailer subTrailer = new SubTrailer(expr);
         subTrailer.setNodeName("square trailer");
@@ -316,7 +321,7 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
 
     @Override
     public Node visitCallArg(pythonParser.CallArgContext ctx) {
-        Node expr = this.visit(ctx.expr());
+        Node expr = this.visit(ctx.ternaryExpr());
         Node argName = null;
 
         if (ctx.NAME() != null) {
@@ -422,7 +427,6 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
         return operator;
     }
 
-
     @Override
     public Node visitMulExpr(pythonParser.MulExprContext ctx) {
 
@@ -443,13 +447,12 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
         if (operators.isEmpty()) return exprList.get(0);
 
         // إنشاء MulExpression
-        models.python.Exprs.MulExpression mulExpr = new MulExpression(exprList, operators);
+        models.python.expressions.MulExpression mulExpr = new MulExpression(exprList, operators);
         mulExpr.setNodeName("mul expr");
         mulExpr.setLineNumber(ctx.getStart().getLine());
 
         return mulExpr;
     }
-
 
     @Override
     public Node visitCompareExpr(pythonParser.CompareExprContext ctx) {
@@ -561,7 +564,7 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
             exprList = new ArrayList<>();
 
             for (int i = 0; i < ctx.listItem().size(); i++)
-                exprList.add(this.visit(ctx.listItem(i).expr()));
+                exprList.add(this.visit(ctx.listItem(i).ternaryExpr()));
         }
 
         ListType list = new ListType(exprList);
@@ -592,7 +595,7 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
     @Override
     public Node visitDictItem(pythonParser.DictItemContext ctx) {
         Node literal = this.visit(ctx.literal());
-        Node expr = this.visit(ctx.expr());
+        Node expr = this.visit(ctx.ternaryExpr());
 
         DictItem dictItem = new DictItem(literal, expr);
         dictItem.setNodeName("dict item");
@@ -650,7 +653,7 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
     public Node visitDecorator(pythonParser.DecoratorContext ctx) {
 
         int line = ctx.start.getLine();
-        String name = ctx.name().getText();
+        String name = ctx.name().getText();  // replace with name & dotTrailer
 
         List<Node> callArgs = null;
 
@@ -685,34 +688,83 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
     //IfBLock
 
 
+//    @Override
+//    public Node visitIfBlock(pythonParser.IfBlockContext ctx) {
+//
+//        int line = ctx.start.getLine();
+//
+//        // ---------- IF condition ----------
+//        Node ifCondition = visit(ctx.ternaryExpr(0));
+//        BlockNode thenBlock = (BlockNode) visit(ctx.block(0));
+//
+//        // ---------- ELIF blocks ----------
+//        List<ElifNode> elifBlocks = new ArrayList<>();
+//        int numElif = ctx.ELIF().size();
+//        for (int i = 0; i < numElif; i++) {
+//            Node elifCond = visit(ctx.ternaryExpr(i + 1)); // expr بعد كل ELIF
+//            BlockNode elifBlock = (BlockNode) visit(ctx.block(i + 1));
+//            elifBlocks.add(new ElifNode(ctx.ELIF(i).getSymbol().getLine(), elifCond, elifBlock));
+//        }
+//
+//        // ---------- ELSE block ----------
+//        BlockNode elseBlock = null;
+//        if (ctx.ELSE() != null) {
+//            int totalBlocks = ctx.block().size();
+//            elseBlock = (BlockNode) visit(ctx.block(totalBlocks - 1));
+//        }
+//
+//        return new IfNode(line, ifCondition, thenBlock, elifBlocks, elseBlock);
+//    }
+
+
     @Override
     public Node visitIfBlock(pythonParser.IfBlockContext ctx) {
+        Node ifCondition = this.visit(ctx.ternaryExpr());
+        ifCondition.setNodeName("if condition");
 
-        int line = ctx.start.getLine();
+        Node ifBody = this.visit(ctx.block());
+        ifBody.setNodeName("if body");
 
-        // ---------- IF condition ----------
-        Node ifCondition = visit(ctx.expr(0));
-        BlockNode thenBlock = (BlockNode) visit(ctx.block(0));
+        IfBlock ifBlock = new IfBlock(ifCondition, ifBody);
 
-        // ---------- ELIF blocks ----------
-        List<ElifNode> elifBlocks = new ArrayList<>();
-        int numElif = ctx.ELIF().size();
-        for (int i = 0; i < numElif; i++) {
-            Node elifCond = visit(ctx.expr(i + 1)); // expr بعد كل ELIF
-            BlockNode elifBlock = (BlockNode) visit(ctx.block(i + 1));
-            elifBlocks.add(new ElifNode(ctx.ELIF(i).getSymbol().getLine(), elifCond, elifBlock));
+        // getting elif blocks
+        if (!ctx.elifBlock().isEmpty()) {
+            ArrayList<Node> elifBlockList = new ArrayList<>();
+
+            for (int i = 0; i < ctx.elifBlock().size(); i++) {
+                elifBlockList.add(this.visit(ctx.elifBlock(i)));
+            }
+            ifBlock.setElifBlockList(elifBlockList);
         }
 
-        // ---------- ELSE block ----------
-        BlockNode elseBlock = null;
-        if (ctx.ELSE() != null) {
-            int totalBlocks = ctx.block().size();
-            elseBlock = (BlockNode) visit(ctx.block(totalBlocks - 1));
+        // getting else block
+        if (ctx.elseBlock() != null) {
+            Node elseBlock = this.visit(ctx.elseBlock());
+            ifBlock.setElseBlock(elseBlock);
         }
 
-        return new IfNode(line, ifCondition, thenBlock, elifBlocks, elseBlock);
+        return ifBlock;
     }
 
+    @Override
+    public Node visitElifBlock(pythonParser.ElifBlockContext ctx) {
+        Node elifCondition = this.visit(ctx.ternaryExpr());
+        elifCondition.setNodeName("elif condition");
+
+        Node elifBody = this.visit(ctx.block());
+        elifBody.setNodeName("elif body");
+
+        ElifBlock elifBlock = new ElifBlock(elifCondition, elifBody);
+        elifBlock.setLineNumber(ctx.getStart().getLine());
+        return elifBlock;
+    }
+
+    @Override
+    public Node visitElseBlock(pythonParser.ElseBlockContext ctx) {
+        ElseBlock elseBlock = (ElseBlock) this.visit(ctx.block());
+        elseBlock.setLineNumber(ctx.getStart().getLine());
+        return elseBlock;
+    }
 
     //forBLock
     @Override
@@ -721,7 +773,7 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
         int line = ctx.start.getLine();
 
         String iterator = ctx.NAME().getText();          // الاسم بعد FOR
-        Node iterable = visit(ctx.expr());               // expr بعد IN
+        Node iterable = visit(ctx.ternaryExpr());               // expr بعد IN
         BlockNode body = (BlockNode) visit(ctx.block()); // جسم الحلقة
 
         return new ForNode(line, iterator, iterable, body);
@@ -735,7 +787,7 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
 
         int line = ctx.start.getLine();
 
-        Node condition = visit(ctx.expr());               // expr بعد WHILE
+        Node condition = visit(ctx.ternaryExpr());               // expr بعد WHILE
         BlockNode body = (BlockNode) visit(ctx.block());  // جسم الحلقة
 
         return new WhileNode(line, condition, body);

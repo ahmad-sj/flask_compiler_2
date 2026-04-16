@@ -14,7 +14,7 @@ public abstract class Node {
     }
 
     public String print(int level) {
-        return "################## print is not implemented! in node: " + nodeName + ", indent level: " + level + " ##################\n";
+        return "################## method print is not overrided in class: " + nodeName + ", indent level: " + level + " ##################\n";
     }
 
     public String getIndent(int level) {

@@ -25,7 +25,7 @@ public class AppHandler {
         this.symbolTable = symbolTable;
     }
 
-    public void start(){
+    public void start() {
         // getting parser for python file
         try {
             // مسار الملف app.py
@@ -36,34 +36,34 @@ public class AppHandler {
             pythonLexer lexer = new pythonLexer(input);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
 
+
             // طباعة جميع التوكنات للتأكد من INDENT و DEDENT
-            tokens.fill(); // اجلب كل التوكنات
-            List<Token> tokenList = tokens.getTokens();
-//            System.out.println("Tokens (type : text) including INDENT/DEDENT:");
-//            for (Token t : tokenList) {
-//                IO.print("line: " + t.getLine() + "\t\t");
-//                String tokenName = pythonLexer.VOCABULARY.getSymbolicName(t.getType());
-//                System.out.printf("%s : '%s'%n", tokenName, t.getText().replace("\r", "\\r").replace("\n", "\\n"));
-//            }
+//            printLexerTokens(tokens);
+
 
             // تمرير التوكنات للـ parser
             pythonParser parser = new pythonParser(tokens);
 
+
             // إنشاء Parse Tree من القاعدة الرئيسية
             ParseTree tree = parser.prog();
+
 
             // طباعة Parse Tree بشكل نصي
 //            System.out.println("\nParse Tree (text format):");
 //            System.out.println(tree.toStringTree(parser));
-//
+
+
 //             طباعة Parse Tree بشكل شجري (Hierarchy)
 //            System.out.println("\nParse Tree (hierarchy):");
 //            printTree(tree, parser, 0);
 
 
+            // visiting parse tree
             AppVisitor appVisitor = new AppVisitor();
             App app = appVisitor.visit(tree);
 
+            // printing AST
             IO.println("================================================================================");
             for (int i = 0; i < app.nodes.size(); i++) {
                 IO.println(app.nodes.get(i).print(0));
@@ -71,7 +71,6 @@ public class AppHandler {
 
         } catch (IOException e) {
             e.printStackTrace();
-
         }
     }
 
@@ -91,6 +90,17 @@ public class AppHandler {
 
         for (int i = 0; i < tree.getChildCount(); i++) {
             printTree(tree.getChild(i), parser, indent + 1);
+        }
+    }
+
+    private void printLexerTokens(CommonTokenStream tokens) {
+        tokens.fill(); // اجلب كل التوكنات
+        List<Token> tokenList = tokens.getTokens();
+        System.out.println("Tokens (type : text) including INDENT/DEDENT:");
+        for (Token t : tokenList) {
+            IO.print("line: " + t.getLine() + "\t\t");
+            String tokenName = pythonLexer.VOCABULARY.getSymbolicName(t.getType());
+            System.out.printf("%s : '%s'%n", tokenName, t.getText().replace("\r", "\\r").replace("\n", "\\n"));
         }
     }
 }

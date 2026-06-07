@@ -13,14 +13,11 @@ public class Name extends Node {
         this.trailerList = trailerList;
     }
 
-
     @Override
     public String print(int level) {
         String indent = getIndent(level);
 
         StringBuilder trailers = new StringBuilder();
-
-
 
         if (trailerList != null) {
             for (int i = 0; i < trailerList.size(); i++) {
@@ -36,7 +33,7 @@ public class Name extends Node {
             }
         }
 
-        return "Name    \n" +
+        return "name\n" +
                 indent + "├─ line no: " + lineNumber + "\n" +
                 (trailers.isEmpty()
                         ? indent + "└─ id: " + id.print(level + 2)
@@ -44,7 +41,5 @@ public class Name extends Node {
                         + indent + "└─ trailers:\n" + trailers
                 );
     }
-
-
 
 }

@@ -13,17 +13,34 @@ public class Dict extends Node {
 
     @Override
     public String toString() {
-        StringBuilder items = new StringBuilder();
+        StringBuilder sb = new StringBuilder("{");
 
         if (itemList != null) {
             for (int i = 0; i < itemList.size(); i++) {
-                items.append(itemList.get(i));
+                sb.append(itemList.get(i));
 
                 if (i + 1 < itemList.size())
-                    items.append(", ");
+                    sb.append(", ");
+            }
+        }
+        sb.append("}");
+
+        return sb.toString();
+    }
+
+    @Override
+    public String print(int level) {
+        StringBuilder sb = new StringBuilder();
+
+        if (itemList != null) {
+            for (int i = 0; i < itemList.size(); i++) {
+                sb.append(itemList.get(i));
+
+                if (i + 1 < itemList.size())
+                    sb.append(", ");
             }
         }
 
-        return "[" + items + "]\n";
+        return sb.toString();
     }
 }

@@ -33,7 +33,7 @@ public class EqualExpression extends Node {
     @Override
     public String print(int level) {
         String indent = getIndent(level);
-        StringBuilder sb = new StringBuilder(indent + "equal expr\n");
+        StringBuilder sb = new StringBuilder("equal expr\n");
         sb.append(indent).append("├─ line no: ").append(lineNumber).append("\n");
 
         for (int i = 0; i < exprList.size(); i++) {

@@ -20,7 +20,7 @@ products = [
 
 # Helper to get the next id
 def next_id():
-    return max(p["id"] for p in products) + 1 if products else 1
+    return max((p["id"] for p in products)) + 1 if products else 1
 
 @app.route('/')
 def index():

@@ -1,4 +1,4 @@
-// Generated from C:/Users/Admin/Desktop/flask_compiler_2/grammars/pythonParser.g4 by ANTLR 4.13.2
+// Generated from C:/Users/Admin/Desktop/FITE_Projects/compiler_2/flask_compiler_2/grammars/pythonParser.g4 by ANTLR 4.13.2
  package antlr; 
 
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -29,66 +29,6 @@ public class pythonParserBaseListener implements pythonParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterProgSimple(pythonParser.ProgSimpleContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitProgSimple(pythonParser.ProgSimpleContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterProgTrivial(pythonParser.ProgTrivialContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitProgTrivial(pythonParser.ProgTrivialContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterStmtList(pythonParser.StmtListContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitStmtList(pythonParser.StmtListContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterCommentLine(pythonParser.CommentLineContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitCommentLine(pythonParser.CommentLineContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterNl(pythonParser.NlContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitNl(pythonParser.NlContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
 	@Override public void enterStmt(pythonParser.StmtContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -96,6 +36,18 @@ public class pythonParserBaseListener implements pythonParserListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitStmt(pythonParser.StmtContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterSimpleStmts(pythonParser.SimpleStmtsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitSimpleStmts(pythonParser.SimpleStmtsContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -353,6 +305,30 @@ public class pythonParserBaseListener implements pythonParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterNegatedExpr(pythonParser.NegatedExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitNegatedExpr(pythonParser.NegatedExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterCallExpr(pythonParser.CallExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitCallExpr(pythonParser.CallExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterReturnLine(pythonParser.ReturnLineContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -461,6 +437,18 @@ public class pythonParserBaseListener implements pythonParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterCompareOptor(pythonParser.CompareOptorContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitCompareOptor(pythonParser.CompareOptorContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterAddExpr(pythonParser.AddExprContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -509,25 +497,25 @@ public class pythonParserBaseListener implements pythonParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterMuiltoperator(pythonParser.MuiltoperatorContext ctx) { }
+	@Override public void enterMulOperator(pythonParser.MulOperatorContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitMuiltoperator(pythonParser.MuiltoperatorContext ctx) { }
+	@Override public void exitMulOperator(pythonParser.MulOperatorContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterBlockStmt(pythonParser.BlockStmtContext ctx) { }
+	@Override public void enterCompoundStmt(pythonParser.CompoundStmtContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitBlockStmt(pythonParser.BlockStmtContext ctx) { }
+	@Override public void exitCompoundStmt(pythonParser.CompoundStmtContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

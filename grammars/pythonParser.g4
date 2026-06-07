@@ -7,29 +7,16 @@ options { tokenVocab=pythonLexer; }
 @header{ package antlr; }
 
 prog
-    : progSimple EOF
-    | progTrivial EOF
-    ;
-
-progSimple :(NEWLINE* INDENT? stmt  DEDENT? NEWLINE* DEDENT? )* NEWLINE* ;  //finish
-
-progTrivial : commentLine NEWLINE* ;        //finish
-
-stmtList
-    : (nl* stmt)+ nl* ;                 //finish
-
-commentLine
-    : COMMENT        //finish
-    ;
-
-nl
-    : (NEWLINE)+        //finish
+    : (NEWLINE | stmt)* EOF
     ;
 
 stmt
-    : simpleStmt        //finish
-    | blockStmt
-    | commentLine       //finish
+    : simpleStmts        //finish
+    | compoundStmt
+    ;
+
+simpleStmts
+    : simpleStmt (SEMICOLON simpleStmt)* SEMICOLON? NEWLINE
     ;
 
 simpleStmt       // not necessary if all children visit methods are implemented
@@ -44,7 +31,6 @@ importLine
     : IMPORT name (AS NAME)?                             #singleImport  //  finish
     | FROM name IMPORT NAME (COMMA NAME)*                   #multiImport   // finish
     ;
-
 
 pass: PASS;     // finish
 
@@ -99,7 +85,7 @@ genExpr
 
 
 callArgs                // finish
-    : LPAREN callList RPAREN
+    : LPAREN callList? RPAREN
     ;
 
 callList                // finish
@@ -113,10 +99,15 @@ callArg                     //finish
 
 // callExpr: دعم function calls مع generator expressions
 singleExpr
-    : NOT singleExpr
+    : negatedExpr
     | value
-    | id LPAREN (callArg (COMMA callArg)*)? RPAREN
     ;
+
+negatedExpr
+    : NOT singleExpr;
+
+callExpr
+    : id LPAREN callList? RPAREN;
 
 returnLine
     :     RETURN  returnExpr?   ;           //finish
@@ -147,8 +138,11 @@ equalExpr
     ;
 
 compareExpr
-    : addExpr ((LESSTHAN | GREATERTHAN | LESSOREQUAL | GREATEROREQUAL) addExpr)*        //done
+    : addExpr (compareOptor addExpr)*        //done
     ;
+
+compareOptor
+    : (LESSTHAN | GREATERTHAN | LESSOREQUAL | GREATEROREQUAL);
 
 addExpr                                 // done
     : mulExpr (addExprOptor mulExpr)*
@@ -160,14 +154,14 @@ addExprOptor
     ;
 
 mulExpr
-    : singleExpr (muiltoperator singleExpr)* //done
+    : singleExpr (mulOperator singleExpr)* //done
     ;
 
-muiltoperator:
-(STAR | SLASH | PERCENT);               //done
+mulOperator
+    : (STAR | SLASH | PERCENT);               //done
 
 // Block statements
-blockStmt
+compoundStmt
     : func          //finish
     | ifBlock       //finish
     | forBlock      //finish
@@ -175,7 +169,7 @@ blockStmt
     ;
 
 decorator
-    : AT name callArgs?             //finish
+    : AT name callArgs? NEWLINE             //finish
     ;
 
 funcArgs
@@ -187,68 +181,64 @@ argsNames
     ;
 
 func
-    : (decorator  nl)? DEF NAME funcArgs COLON nl block?        //finish
+    : (decorator)? DEF NAME funcArgs COLON block        //finish
 ;
 
 block
-    : INDENT stmtList DEDENT               //finish
+    : NEWLINE INDENT stmt+ DEDENT               //finish
     ;
 
 
 ifBlock                             //finish
-    : IF ternaryExpr COLON nl* block
+    : IF ternaryExpr COLON block
       (elifBlock)*
       (elseBlock)?
     ;
 
 elifBlock
-    : ELIF ternaryExpr COLON nl* block
+    : ELIF ternaryExpr COLON block
     ;
 
 elseBlock
-    : ELSE COLON nl* block
+    : ELSE COLON block
     ;
 
 forBlock
-    : FOR NAME IN ternaryExpr COLON nl block       //done
+    : FOR NAME IN ternaryExpr COLON block       //done
     ;
 
 whileBlock
-    : WHILE ternaryExpr COLON nl block                 //done
+    : WHILE ternaryExpr COLON block                 //done
     ;
 
 // Lists
 listVal                 // done
     : LSB
-      (NEWLINE | WS)*
       listItem? (listItemSeparator listItem)* listItemSeparator?
-      (NEWLINE | WS)*
       RSB
     ;
 
 listItem                // not necessary
-    : ternaryExpr (NEWLINE | WS)*
+    : ternaryExpr
     ;
 
 listItemSeparator       // not necessary
-    : COMMA (NEWLINE | WS)*
+    : COMMA
     ;
 
 // Dictionaries
 dictVal                 // done
     : LBRACE
-      (NEWLINE | WS)*
       dictItem? (dictItemSeparator dictItem)* dictItemSeparator?
-      (NEWLINE | WS)*
       RBRACE
     ;
 
 dictItem                // done
-    : literal COLON ternaryExpr (NEWLINE | WS)*
+    : literal COLON ternaryExpr
     ;
 
 dictItemSeparator       // not necessary
-    : COMMA (NEWLINE | WS)*
+    : COMMA
     ;
 
 literal

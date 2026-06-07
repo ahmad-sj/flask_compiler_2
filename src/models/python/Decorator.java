@@ -6,12 +6,11 @@ import java.util.List;
 
 public class Decorator extends Node {
 
-    private final String name;
-    private final List<Node> callArgs;
+    Node name;
+    List<Node> callArgs;
 
-    public Decorator(int lineNumber, String name, List<Node> callArgs) {
-        this.nodeName = "Decorator";
-        this.lineNumber = lineNumber;
+    public Decorator(Node name, List<Node> callArgs) {
+        this.nodeName = "decorator line";
         this.name = name;
         this.callArgs = callArgs;
     }
@@ -29,10 +28,9 @@ public class Decorator extends Node {
             }
         }
 
-
-        return "- decorator line" +
-                "\nline no: " + lineNumber +
-                "\nname: " + name.toString() +
+        return this.nodeName + ":"
+                + "\nline no: " + lineNumber
+                + "\nname: " + name.toString() +
                 (callArgs == null
                         ? "\n"
                         : "\nargs: " + args + "\n"
@@ -54,15 +52,15 @@ public class Decorator extends Node {
             }
         }
 
-        return "decorator:\n"
+        return this.nodeName + ":\n"
                 + (callArgs == null ?
                 (
                         indent + "├─ line no: " + lineNumber + "\n"
-                                + indent + "└─ name: " + name
+                                + indent + "└─ " + name.print(level + 1)
                 ) :
                 (
                         indent + "├─ line no: " + lineNumber + "\n"
-                                + indent + "├─ name: " + name + "\n"
+                                + indent + "├─ " + name.print(level + 1)
                                 + indent + "└─ args: " + args.toString()
                 )
         );

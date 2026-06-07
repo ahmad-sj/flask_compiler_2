@@ -12,8 +12,8 @@ public class AppVisitor extends pythonParserBaseVisitor<App> {
 
         PythonVisitor pythonVisitor = new PythonVisitor();
 
-        for (int i = 0; i < ctx.getChildCount() - 1; i++) {
-            Node child = pythonVisitor.visit(ctx.getChild(i));
+        for (int i = 0; i < ctx.stmt().size(); i++) {
+            Node child = pythonVisitor.visit(ctx.stmt(i));
             app.addNode(child);
         }
 

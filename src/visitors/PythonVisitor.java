@@ -9,12 +9,11 @@ import models.jinja.trailers.CallTrailer;
 import models.jinja.trailers.MemberTrailer;
 import models.jinja.trailers.SubTrailer;
 import models.python.*;
-import models.python.expressions.CompareExpression;
-import models.python.expressions.EqualExpression;
-import models.python.expressions.GenExpression;
-import models.python.expressions.MulExpression;
+import models.python.expressions.*;
 import models.python.blocks.*;
+import models.python.expressions.MulExpression;
 import models.python.literals.*;
+
 import models.python.simple_statements.*;
 import models.python.simple_statements.import_lines.MultiImport;
 import models.python.simple_statements.import_lines.SingleImport;
@@ -26,31 +25,22 @@ import java.util.List;
 public class PythonVisitor extends pythonParserBaseVisitor<Node> {
 
     @Override
-    public Node visitStmtList(pythonParser.StmtListContext ctx) {
-        StatementListNode statementList = new StatementListNode("StmtList", ctx.getStart().getLine());
+    public Node visitSimpleStmts(pythonParser.SimpleStmtsContext ctx) {
+        if (ctx.simpleStmt().size() > 2) {
+            List<Node> statements = new ArrayList<>();
 
-        for (var stmtCtx : ctx.stmt()) {
-            Node stmtNode = visit(stmtCtx);
-            if (stmtNode != null) {
-                statementList.addStatement(stmtNode);
+            for (var stmt : ctx.simpleStmt()) {
+                Node stmtNode = visit(stmt);
+                statements.add(stmtNode);
             }
+
+            BlockNode blockNode = new BlockNode(statements);
+            blockNode.setNodeName("simple statements list");
+            blockNode.setLineNumber(ctx.getStart().getLine());
+            return blockNode;
+        } else {
+            return this.visit(ctx.simpleStmt(0));
         }
-
-        return statementList;
-    }
-
-    @Override
-    public Node visitProgSimple(pythonParser.ProgSimpleContext ctx) {
-        StatementListNode statementList = new StatementListNode("ProgSimple", ctx.getStart().getLine());
-
-        for (var stmtCtx : ctx.stmt()) {
-            Node stmtNode = visit(stmtCtx);
-            if (stmtNode != null) {
-                statementList.addStatement(stmtNode);
-            }
-        }
-
-        return statementList;
     }
 
     // simple statements
@@ -214,7 +204,6 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
 
     // ================================
 
-
     @Override
     public Node visitId(pythonParser.IdContext ctx) {
         IdType idType = new IdType(ctx.NAME().getText());
@@ -338,7 +327,6 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
     }
 
     // ===================================
-
     // expressions
 
     @Override
@@ -439,7 +427,7 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
         }
 
         // زيارة كل muloperator
-        for (var opCtx : ctx.muiltoperator()) {
+        for (var opCtx : ctx.mulOperator()) {
             operators.add((Operator) this.visit(opCtx));
         }
 
@@ -456,26 +444,32 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
 
     @Override
     public Node visitCompareExpr(pythonParser.CompareExprContext ctx) {
+
         if (ctx.children.size() > 1) {
-            CompareExpression cmpExpr = new CompareExpression();
-            cmpExpr.setNodeName("compare expr");
-            cmpExpr.setLineNumber(ctx.getStart().getLine());
+            ArrayList<Node> exprList = new ArrayList<>();
+            ArrayList<Node> optorList = new ArrayList<>();
 
-            // visit addExpr
-            for (int i = 0; i < ctx.addExpr().size(); i++) {
-                cmpExpr.addExpr(visit(ctx.addExpr(i)));
+            int optorCount = ctx.compareOptor().size();
+
+            for (int i = 0; i < optorCount; i++) {
+                exprList.add(visit(ctx.addExpr(i)));
+                optorList.add(visit(ctx.compareOptor(i)));
             }
+            exprList.add(visit(ctx.addExpr(optorCount)));
 
-            // store operators
-            for (var opToken : ctx.getTokens(pythonParser.LESSTHAN)) cmpExpr.addOperator(opToken.getText());
-            for (var opToken : ctx.getTokens(pythonParser.GREATERTHAN)) cmpExpr.addOperator(opToken.getText());
-            for (var opToken : ctx.getTokens(pythonParser.LESSOREQUAL)) cmpExpr.addOperator(opToken.getText());
-            for (var opToken : ctx.getTokens(pythonParser.GREATEROREQUAL)) cmpExpr.addOperator(opToken.getText());
-
-            return cmpExpr;
+            CompareExpression compareExpression = new CompareExpression(exprList, optorList);
+            compareExpression.setLineNumber(ctx.getStart().getLine());
+            return compareExpression;
         } else {
-            return visit(ctx.addExpr(0));
+            return this.visit(ctx.addExpr(0));
         }
+    }
+
+    @Override
+    public Node visitCompareOptor(pythonParser.CompareOptorContext ctx) {
+        CompareOperator compareOperator = new CompareOperator(ctx.getText());
+        compareOperator.setLineNumber(ctx.getStart().getLine());
+        return compareOperator;
     }
 
     @Override
@@ -500,6 +494,15 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
         }
     }
 
+    @Override
+    public Node visitNegatedExpr(pythonParser.NegatedExprContext ctx) {
+        Node expr = this.visit(ctx.singleExpr());
+
+        NegatedExpression negatedExpression = new NegatedExpression(expr);
+        negatedExpression.setLineNumber(ctx.getStart().getLine());
+
+        return negatedExpression;
+    }
 
     // literals
     @Override
@@ -604,7 +607,6 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
         return dictItem;
     }
 
-
     @Override
     public Node visitFunc(pythonParser.FuncContext ctx) {
 
@@ -651,20 +653,20 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
 
     @Override
     public Node visitDecorator(pythonParser.DecoratorContext ctx) {
-
-        int line = ctx.start.getLine();
-        String name = ctx.name().getText();  // replace with name & dotTrailer
+        Node name = this.visit(ctx.name());
 
         List<Node> callArgs = null;
 
-        if (ctx.callArgs() != null) {
+        if (ctx.callArgs() != null && !ctx.callArgs().isEmpty()) {
             callArgs = new ArrayList<>();
             for (var expr : ctx.callArgs().callList().callArg()) {
-                callArgs.add(visit(expr)); // لاحقًا ExprNode
+                callArgs.add(visit(expr));
             }
         }
 
-        return new Decorator(line, name, callArgs);
+        Decorator decorator = new Decorator(name, callArgs);
+        decorator.setLineNumber(ctx.getStart().getLine());
+        return decorator;
     }
 
     @Override
@@ -672,50 +674,17 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
 
         List<Node> statements = new ArrayList<>();
 
-        for (var stmt : ctx.stmtList().stmt()) {
+        for (var stmt : ctx.stmt()) {
             Node stmtNode = visit(stmt);
             statements.add(stmtNode);
         }
 
         BlockNode blockNode = new BlockNode(statements);
         blockNode.setNodeName("block");
-        blockNode.setLineNumber(ctx.stmtList().getStart().getLine());
+        blockNode.setLineNumber(ctx.getStart().getLine());
 
         return blockNode;
     }
-
-
-    //IfBLock
-
-
-//    @Override
-//    public Node visitIfBlock(pythonParser.IfBlockContext ctx) {
-//
-//        int line = ctx.start.getLine();
-//
-//        // ---------- IF condition ----------
-//        Node ifCondition = visit(ctx.ternaryExpr(0));
-//        BlockNode thenBlock = (BlockNode) visit(ctx.block(0));
-//
-//        // ---------- ELIF blocks ----------
-//        List<ElifNode> elifBlocks = new ArrayList<>();
-//        int numElif = ctx.ELIF().size();
-//        for (int i = 0; i < numElif; i++) {
-//            Node elifCond = visit(ctx.ternaryExpr(i + 1)); // expr بعد كل ELIF
-//            BlockNode elifBlock = (BlockNode) visit(ctx.block(i + 1));
-//            elifBlocks.add(new ElifNode(ctx.ELIF(i).getSymbol().getLine(), elifCond, elifBlock));
-//        }
-//
-//        // ---------- ELSE block ----------
-//        BlockNode elseBlock = null;
-//        if (ctx.ELSE() != null) {
-//            int totalBlocks = ctx.block().size();
-//            elseBlock = (BlockNode) visit(ctx.block(totalBlocks - 1));
-//        }
-//
-//        return new IfNode(line, ifCondition, thenBlock, elifBlocks, elseBlock);
-//    }
-
 
     @Override
     public Node visitIfBlock(pythonParser.IfBlockContext ctx) {
@@ -726,6 +695,7 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
         ifBody.setNodeName("if body");
 
         IfBlock ifBlock = new IfBlock(ifCondition, ifBody);
+        ifBlock.setLineNumber(ctx.getStart().getLine());
 
         // getting elif blocks
         if (!ctx.elifBlock().isEmpty()) {
@@ -766,7 +736,6 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
         return elseBlock;
     }
 
-    //forBLock
     @Override
     public Node visitForBlock(pythonParser.ForBlockContext ctx) {
 
@@ -778,9 +747,6 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
 
         return new ForNode(line, iterator, iterable, body);
     }
-
-
-    //WhileBlock
 
     @Override
     public Node visitWhileBlock(pythonParser.WhileBlockContext ctx) {

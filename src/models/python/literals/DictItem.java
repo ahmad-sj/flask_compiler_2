@@ -15,4 +15,9 @@ public class DictItem extends Node {
     public String toString() {
         return literal.toString() + " : " + expr.toString();
     }
+
+    @Override
+    public String print(int level) {
+        return literal.toString() + " : " + expr.toString();
+    }
 }

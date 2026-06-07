@@ -3,8 +3,8 @@ package models.python.simple_statements;
 import models.Node;
 
 public class AssignLine extends Node {
-    Node target;
-    Node expr;
+    public Node target;
+    public Node expr;
 
     public AssignLine(Node target, Node expr) {
         this.target = target;

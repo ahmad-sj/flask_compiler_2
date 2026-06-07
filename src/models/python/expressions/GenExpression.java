@@ -6,10 +6,10 @@ import models.Node;
 
 // genExpr: value FOR NAME IN expr (IF expr)?
 public class GenExpression extends Node {
-    Node valueNode;
-    Node nameNode;
-    Node inExpr;
-    Node ifExpr;
+    public Node valueNode;
+    public Node nameNode;
+    public Node inExpr;
+    public Node ifExpr;
 
     public GenExpression(Node valueNode, Node nameNode, Node inExpr, Node ifExpr) {
         this.valueNode = valueNode;

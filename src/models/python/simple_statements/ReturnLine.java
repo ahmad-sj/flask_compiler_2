@@ -4,7 +4,7 @@ import models.Node;
 
 public class ReturnLine extends Node {
 
-    Node returnExpr;
+    public Node returnExpr;
 
     public ReturnLine(Node returnExpr) {
         this.returnExpr = returnExpr;

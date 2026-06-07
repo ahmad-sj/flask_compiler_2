@@ -5,8 +5,8 @@ import models.Node;
 import java.util.ArrayList;
 
 public class Value extends Node {
-    Node baseValue;
-    ArrayList<Node> trailerList;
+    public Node baseValue;
+    public ArrayList<Node> trailerList;
 
     public Value(Node baseValue, ArrayList<Node> trailerList) {
         this.baseValue = baseValue;

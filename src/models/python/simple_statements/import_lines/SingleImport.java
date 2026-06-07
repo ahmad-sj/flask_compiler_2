@@ -6,8 +6,8 @@ import models.python.Statement;
 public class SingleImport extends Statement {
 
 
-    Node importedName; // of type Name
-    Node importAlias; // of type TypeName
+    public Node importedName; // of type Name
+    public Node importAlias; // of type TypeName
 
     public SingleImport(Node importedName, Node importAlias) {
         this.importedName = importedName;

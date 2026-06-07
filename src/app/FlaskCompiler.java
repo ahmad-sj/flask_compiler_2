@@ -15,7 +15,8 @@ public class FlaskCompiler {
         SymbolTable symbolTable = new SymbolTable();
 
         // parsing app (app.py file)
-        AppHandler appHandler = new AppHandler(currentPath, symbolTable);
+        String appFile = args.length > 0 ? args[0] : "tests/app.py";
+        AppHandler appHandler = new AppHandler(currentPath, symbolTable, appFile);
         appHandler.start();
 
         // parsing templates (.html files)

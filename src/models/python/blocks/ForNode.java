@@ -18,6 +18,10 @@ public class ForNode extends Node {
         this.body = body;
     }
 
+    public String getIterator() { return iterator; }
+    public Node getIterable() { return iterable; }
+    public BlockNode getBody() { return body; }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

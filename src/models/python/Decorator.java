@@ -6,8 +6,8 @@ import java.util.List;
 
 public class Decorator extends Node {
 
-    Node name;
-    List<Node> callArgs;
+    public Node name;
+    public List<Node> callArgs;
 
     public Decorator(Node name, List<Node> callArgs) {
         this.nodeName = "decorator line";

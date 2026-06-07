@@ -731,7 +731,8 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
 
     @Override
     public Node visitElseBlock(pythonParser.ElseBlockContext ctx) {
-        ElseBlock elseBlock = (ElseBlock) this.visit(ctx.block());
+        BlockNode block = (BlockNode) this.visit(ctx.block());
+        ElseBlock elseBlock = new ElseBlock(block.statements);
         elseBlock.setLineNumber(ctx.getStart().getLine());
         return elseBlock;
     }

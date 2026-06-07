@@ -5,8 +5,8 @@ import models.Node;
 import java.util.ArrayList;
 
 public class Name extends Node {
-    Node id; // of type IdType
-    ArrayList<Node> trailerList; // list of type IdType
+    public Node id; // of type IdType
+    public ArrayList<Node> trailerList; // list of type IdType
 
     public Name(Node id, ArrayList<Node> trailerList) {
         this.id = id;

@@ -28,7 +28,7 @@ import models.Node;
 
 public class ExprLine extends Node {
 
-    Node returnExpr;
+    public Node returnExpr;
 
     public ExprLine(Node returnExpr) {
         this.returnExpr = returnExpr;

@@ -12,6 +12,9 @@ public class EqualExpression extends Node {
 
     public EqualExpression() {}
 
+    public List<Node> getExprList() { return exprList; }
+    public List<String> getOperators() { return operators; }
+
     public void addExpr(Node expr) {
         if (expr != null) exprList.add(expr);
     }

@@ -6,10 +6,10 @@ import java.util.ArrayList;
 
 public class Func extends Node {
 
-    Node decorator;
-    Node funcName;
-    ArrayList<Node> funcArgs;
-    Node funcBlock;
+    public Node decorator;
+    public Node funcName;
+    public ArrayList<Node> funcArgs;
+    public Node funcBlock;
 
     public Func(Node decorator, Node funcName, ArrayList<Node> funcArgs, Node funcBlock) {
         this.decorator = decorator;

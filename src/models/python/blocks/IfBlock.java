@@ -5,8 +5,8 @@ import models.Node;
 import java.util.ArrayList;
 
 public class IfBlock extends ElifBlock {
-    ArrayList<Node> elifBlockList;
-    Node elseBlock;
+    public ArrayList<Node> elifBlockList;
+    public Node elseBlock;
 
     public IfBlock(Node condition, Node body) {
         super(condition, body);

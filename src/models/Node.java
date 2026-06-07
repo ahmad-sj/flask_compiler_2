@@ -26,4 +26,8 @@ public abstract class Node {
 
         return indent.toString();
     }
+
+    public int getLineNumber() {
+        return lineNumber;
+    }
 }

@@ -16,6 +16,9 @@ public class WhileNode extends Node {
         this.body = body;
     }
 
+    public Node getCondition() { return condition; }
+    public BlockNode getBody() { return body; }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

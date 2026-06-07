@@ -5,8 +5,8 @@ import models.Node;
 import java.util.ArrayList;
 
 public class MultiImport extends Node {
-    Node fromName; // of type NameList
-    ArrayList<Node> importedNames; // of type TypeName
+    public Node fromName; // of type NameList
+    public ArrayList<Node> importedNames; // of type TypeName
 
     public MultiImport(Node fromName, ArrayList<Node> importedNames) {
         this.fromName = fromName;

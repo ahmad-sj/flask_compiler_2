@@ -19,17 +19,19 @@ import java.util.List;
 public class AppHandler {
     Path path;
     SymbolTable symbolTable;
+    String appFile;
 
-    public AppHandler(Path path, SymbolTable symbolTable) {
+    public AppHandler(Path path, SymbolTable symbolTable, String appFile) {
         this.path = path;
         this.symbolTable = symbolTable;
+        this.appFile = appFile;
     }
 
     public void start() {
         // getting parser for python file
         try {
             // مسار الملف app.py
-            Path appFilePath = this.path.resolve("tests/app.py");
+            Path appFilePath = this.path.resolve(appFile);
 
             // إنشاء Lexer و Parser
             CharStream input = CharStreams.fromFileName(appFilePath.toString());

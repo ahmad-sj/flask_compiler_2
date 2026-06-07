@@ -12,8 +12,8 @@ import java.util.ArrayList;
 //    : (LESSTHAN | GREATERTHAN | LESSOREQUAL | GREATEROREQUAL);
 public class CompareExpression extends Node {
 
-    ArrayList<Node> exprList;
-    ArrayList<Node> optorList;
+    public ArrayList<Node> exprList;
+    public ArrayList<Node> optorList;
 
 
     public CompareExpression(ArrayList<Node> exprList, ArrayList<Node> optorList) {

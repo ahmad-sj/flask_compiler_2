@@ -3,6 +3,7 @@ package visitors;
 import models.App;
 import models.Node;
 import models.jinja.atoms.IdType;
+import models.jinja.atoms.StringType;
 import models.jinja.expressions.AddExpression;
 import models.jinja.expressions.Argument;
 import models.jinja.expressions.ArgumentList;
@@ -46,6 +47,8 @@ public class SemanticAnalyzer {
     private SymbolTable symbolTable;
     private List<SemanticError> errors;
     private Map<String, Symbol> allDefinitions;
+    private Set<String> currentFuncParams;
+    private boolean insideRouteFunc;
 
     private static final Set<String> ALWAYS_SAFE = new HashSet<>(Arrays.asList(
             "print", "len", "range", "int", "float", "str", "bool", "list",
@@ -61,9 +64,42 @@ public class SemanticAnalyzer {
         errors = new ArrayList<>();
         symbolTable = new SymbolTable();
         allDefinitions = new HashMap<>();
+        currentFuncParams = null;
+        insideRouteFunc = false;
         checkFlaskBootstrap(app);
         for (Node node : app.nodes) {
             analyzeNode(node);
+        }
+        // Check 7 — Missing Return in Route Function
+        for (Node node : app.nodes) {
+            if (node instanceof Func) {
+                Func func = (Func) node;
+                if (isRouteFunc(func)) {
+                    if (!containsReturn(func.funcBlock)) {
+                        String funcName = null;
+                        if (func.funcName instanceof IdType) {
+                            funcName = ((IdType) func.funcName).name;
+                        }
+                        errors.add(new SemanticError(SemanticError.ErrorType.TYPE_ERROR, func.getLineNumber(),
+                                funcName != null ? funcName : "",
+                                "Route '" + (funcName != null ? funcName : "") + "' has no return statement"));
+                    }
+                }
+            }
+        }
+        // Check 10 — Infinite Recursion (No Base Case)
+        for (Node node : app.nodes) {
+            if (node instanceof Func) {
+                Func func = (Func) node;
+                String funcName = null;
+                if (func.funcName instanceof IdType) {
+                    funcName = ((IdType) func.funcName).name;
+                }
+                if (funcName != null && containsReturn(func.funcBlock) && callsItself(func.funcBlock, funcName) && !hasIfWithReturn(func.funcBlock)) {
+                    errors.add(new SemanticError(SemanticError.ErrorType.TYPE_ERROR, func.getLineNumber(), funcName,
+                            "Function '" + funcName + "' calls itself with no base case — possible infinite recursion"));
+                }
+            }
         }
         return errors;
     }
@@ -72,6 +108,7 @@ public class SemanticAnalyzer {
         boolean hasFlaskImport = false;
         boolean hasAppInstance = false;
         boolean hasRoute = false;
+        Set<String> seenRoutes = new HashSet<>();
 
         for (Node node : app.nodes) {
             if (node instanceof MultiImport) {
@@ -117,20 +154,15 @@ public class SemanticAnalyzer {
                 Func func = (Func) node;
                 if (func.decorator instanceof Decorator) {
                     Decorator dec = (Decorator) func.decorator;
-                    Node decName = dec.name;
-                    if (decName instanceof Name) {
-                        Name name = (Name) decName;
-                        String baseName = ((IdType) name.id).name;
-                        if ("app".equals(baseName) && name.trailerList != null && !name.trailerList.isEmpty()) {
-                            Node firstTrailer = name.trailerList.get(0);
-                            if (firstTrailer instanceof MemberTrailer) {
-                                String attr = firstTrailer.toString();
-                                if (attr.startsWith(".") && attr.length() > 1) {
-                                    String attrName = attr.substring(1);
-                                    if ("route".equals(attrName)) {
-                                        hasRoute = true;
-                                    }
-                                }
+                    if (isRouteDecorator(dec)) {
+                        hasRoute = true;
+                        String url = extractRouteUrl(dec);
+                        if (url != null) {
+                            if (seenRoutes.contains(url)) {
+                                errors.add(new SemanticError(SemanticError.ErrorType.MISSING_FLASK_VARIABLE, func.getLineNumber(), url,
+                                        "Duplicate route '" + url + "' — only the first definition will be used"));
+                            } else {
+                                seenRoutes.add(url);
                             }
                         }
                     }
@@ -152,6 +184,211 @@ public class SemanticAnalyzer {
         }
     }
 
+    private boolean isRouteDecorator(Decorator dec) {
+        if (dec.name == null || !(dec.name instanceof Name)) return false;
+        Name name = (Name) dec.name;
+        if (!(name.id instanceof IdType)) return false;
+        String baseName = ((IdType) name.id).name;
+        if (!"app".equals(baseName)) return false;
+        if (name.trailerList == null || name.trailerList.isEmpty()) return false;
+        Node firstTrailer = name.trailerList.get(0);
+        if (!(firstTrailer instanceof MemberTrailer)) return false;
+        String attr = firstTrailer.toString();
+        return attr.startsWith(".") && attr.length() > 1 && "route".equals(attr.substring(1));
+    }
+
+    private String extractRouteUrl(Decorator dec) {
+        if (dec.callArgs == null || dec.callArgs.isEmpty()) return null;
+        Node firstArg = dec.callArgs.get(0);
+        if (!(firstArg instanceof Argument)) return null;
+        Argument arg = (Argument) firstArg;
+        if (arg.expr == null) return null;
+        Node expr = arg.expr;
+        String raw = null;
+        if (expr instanceof StringType) {
+            raw = ((StringType) expr).value;
+        } else if (expr instanceof Value) {
+            Node base = ((Value) expr).baseValue;
+            if (base instanceof StringType) {
+                raw = ((StringType) base).value;
+            }
+        }
+        if (raw == null) return null;
+        if (raw.length() >= 2 && ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith("\"") && raw.endsWith("\"")))) {
+            raw = raw.substring(1, raw.length() - 1);
+        }
+        return raw;
+    }
+
+    private boolean isRouteFunc(Func func) {
+        if (!(func.decorator instanceof Decorator)) return false;
+        return isRouteDecorator((Decorator) func.decorator);
+    }
+
+    private boolean containsReturn(Node node) {
+        if (node == null) return false;
+        if (node instanceof ReturnLine) return true;
+        if (node instanceof BlockNode) {
+            BlockNode block = (BlockNode) node;
+            for (Node stmt : block.statements) {
+                if (containsReturn(stmt)) return true;
+            }
+        } else if (node instanceof IfBlock) {
+            IfBlock ifBlock = (IfBlock) node;
+            if (containsReturn(ifBlock.body)) return true;
+            if (ifBlock.elifBlockList != null) {
+                for (Node elif : ifBlock.elifBlockList) {
+                    if (containsReturn(elif)) return true;
+                }
+            }
+            if (containsReturn(ifBlock.elseBlock)) return true;
+        } else if (node instanceof ElifBlock) {
+            ElifBlock elif = (ElifBlock) node;
+            if (containsReturn(elif.body)) return true;
+        } else if (node instanceof ForNode) {
+            ForNode forNode = (ForNode) node;
+            if (containsReturn(forNode.getBody())) return true;
+        } else if (node instanceof WhileNode) {
+            WhileNode whileNode = (WhileNode) node;
+            if (containsReturn(whileNode.getBody())) return true;
+        }
+        return false;
+    }
+
+    private boolean callsItself(Node node, String name) {
+        if (node == null) return false;
+        if (node instanceof Value) {
+            Value val = (Value) node;
+            Node base = val.baseValue;
+            if (base instanceof IdType && name.equals(((IdType) base).name)) {
+                if (val.trailerList != null) {
+                    for (Node t : val.trailerList) {
+                        if (t instanceof CallTrailer) return true;
+                    }
+                }
+            }
+            if (base instanceof Name) {
+                if (name.equals(((IdType) ((Name) base).id).name)) {
+                    if (val.trailerList != null) {
+                        for (Node t : val.trailerList) {
+                            if (t instanceof CallTrailer) return true;
+                        }
+                    }
+                }
+            }
+        }
+        if (node instanceof BlockNode) {
+            for (Node stmt : ((BlockNode) node).statements) {
+                if (callsItself(stmt, name)) return true;
+            }
+        } else if (node instanceof IfBlock) {
+            IfBlock ifBlock = (IfBlock) node;
+            if (callsItself(ifBlock.condition, name)) return true;
+            if (callsItself(ifBlock.body, name)) return true;
+            if (ifBlock.elifBlockList != null) {
+                for (Node elif : ifBlock.elifBlockList) {
+                    if (callsItself(elif, name)) return true;
+                }
+            }
+            if (callsItself(ifBlock.elseBlock, name)) return true;
+        } else if (node instanceof ElifBlock) {
+            if (callsItself(((ElifBlock) node).condition, name)) return true;
+            if (callsItself(((ElifBlock) node).body, name)) return true;
+        } else if (node instanceof ElseBlock) {
+            for (Node stmt : ((ElseBlock) node).statements) {
+                if (callsItself(stmt, name)) return true;
+            }
+        } else if (node instanceof ForNode) {
+            ForNode forNode = (ForNode) node;
+            if (callsItself(forNode.getIterable(), name)) return true;
+            if (callsItself(forNode.getBody(), name)) return true;
+        } else if (node instanceof WhileNode) {
+            WhileNode whileNode = (WhileNode) node;
+            if (callsItself(whileNode.getCondition(), name)) return true;
+            if (callsItself(whileNode.getBody(), name)) return true;
+        } else if (node instanceof ReturnLine) {
+            if (callsItself(((ReturnLine) node).returnExpr, name)) return true;
+        } else if (node instanceof ExprLine) {
+            if (callsItself(((ExprLine) node).returnExpr, name)) return true;
+        } else if (node instanceof AssignLine) {
+            if (callsItself(((AssignLine) node).expr, name)) return true;
+        } else if (node instanceof AddExpression) {
+            for (Node expr : ((AddExpression) node).exprList) {
+                if (callsItself(expr, name)) return true;
+            }
+        } else if (node instanceof CompareExpression) {
+            for (Node expr : ((CompareExpression) node).exprList) {
+                if (callsItself(expr, name)) return true;
+            }
+        } else if (node instanceof EqualExpression) {
+            for (Node expr : ((EqualExpression) node).getExprList()) {
+                if (callsItself(expr, name)) return true;
+            }
+        } else if (node instanceof GenExpression) {
+            GenExpression gen = (GenExpression) node;
+            if (callsItself(gen.valueNode, name)) return true;
+            if (callsItself(gen.inExpr, name)) return true;
+            if (callsItself(gen.ifExpr, name)) return true;
+        } else if (node instanceof TernaryExpr) {
+            TernaryExpr ternary = (TernaryExpr) node;
+            if (callsItself(ternary.trueExpr, name)) return true;
+            if (callsItself(ternary.condition, name)) return true;
+            if (callsItself(ternary.falseExpr, name)) return true;
+        } else if (node instanceof Decorator) {
+            Decorator dec = (Decorator) node;
+            if (callsItself(dec.name, name)) return true;
+            if (dec.callArgs != null) {
+                for (Node arg : dec.callArgs) {
+                    if (callsItself(arg, name)) return true;
+                }
+            }
+        } else if (node instanceof Argument) {
+            if (callsItself(((Argument) node).expr, name)) return true;
+        } else if (node instanceof ArgumentList) {
+            for (Node arg : ((ArgumentList) node).argList) {
+                if (callsItself(arg, name)) return true;
+            }
+        } else if (node instanceof CallTrailer) {
+            if (callsItself(((CallTrailer) node).argList, name)) return true;
+        } else if (node instanceof SubTrailer) {
+            if (callsItself(((SubTrailer) node).expr, name)) return true;
+        } else if (node instanceof Name) {
+            if (callsItself(((Name) node).id, name)) return true;
+        }
+        return false;
+    }
+
+    private boolean hasIfWithReturn(Node node) {
+        if (node == null) return false;
+        if (node instanceof IfBlock) {
+            if (containsReturn(node)) return true;
+        }
+        if (node instanceof BlockNode) {
+            for (Node stmt : ((BlockNode) node).statements) {
+                if (hasIfWithReturn(stmt)) return true;
+            }
+        } else if (node instanceof IfBlock) {
+            if (hasIfWithReturn(((IfBlock) node).body)) return true;
+            if (((IfBlock) node).elifBlockList != null) {
+                for (Node elif : ((IfBlock) node).elifBlockList) {
+                    if (hasIfWithReturn(elif)) return true;
+                }
+            }
+            if (hasIfWithReturn(((IfBlock) node).elseBlock)) return true;
+        } else if (node instanceof ElifBlock) {
+            if (hasIfWithReturn(((ElifBlock) node).body)) return true;
+        } else if (node instanceof ForNode) {
+            if (hasIfWithReturn(((ForNode) node).getBody())) return true;
+        } else if (node instanceof WhileNode) {
+            if (hasIfWithReturn(((WhileNode) node).getBody())) return true;
+        } else if (node instanceof ElseBlock) {
+            for (Node stmt : ((ElseBlock) node).statements) {
+                if (hasIfWithReturn(stmt)) return true;
+            }
+        }
+        return false;
+    }
+
     private void analyzeNode(Node node) {
         if (node == null) return;
 
@@ -159,6 +396,12 @@ public class SemanticAnalyzer {
             AssignLine assign = (AssignLine) node;
             if (assign.target instanceof IdType) {
                 String targetName = ((IdType) assign.target).name;
+                if (currentFuncParams != null && currentFuncParams.contains(targetName)) {
+                    errors.add(new SemanticError(SemanticError.ErrorType.SCOPE_ERROR, assign.getLineNumber(), targetName,
+                            "'" + targetName + "' shadows a function parameter"));
+                    analyzeNode(assign.expr);
+                    return;
+                }
                 try {
                     defineSymbol(targetName, "var", inferType(assign.expr), assign.expr);
                 } catch (RuntimeException e) {
@@ -205,8 +448,19 @@ public class SemanticAnalyzer {
             String funcName = null;
             if (func.funcName instanceof IdType) {
                 funcName = ((IdType) func.funcName).name;
+            }
+            // Check 11 — Route Function Shadows Builtin
+            if (isRouteFunc(func) && funcName != null && ALWAYS_SAFE.contains(funcName)) {
+                errors.add(new SemanticError(SemanticError.ErrorType.TYPE_ERROR, func.getLineNumber(), funcName,
+                        "Route function '" + funcName + "' shadows a Python builtin"));
+            }
+            if (funcName != null) {
                 try {
-                    defineSymbol(funcName, "var", "Node", func.funcName);
+                    defineSymbol(funcName, "func", "Node", func.funcName);
+                    Symbol funcSym = symbolTable.currentScope.resolve(funcName);
+                    if (funcSym != null) {
+                        funcSym.attributes.put("paramCount", func.funcArgs != null ? func.funcArgs.size() : 0);
+                    }
                 } catch (RuntimeException e) {
                     errors.add(new SemanticError(SemanticError.ErrorType.SCOPE_ERROR, node.getLineNumber(), funcName,
                             "'" + funcName + "' already defined in scope '" + symbolTable.currentScope.name + "'"));
@@ -214,9 +468,11 @@ public class SemanticAnalyzer {
             }
             symbolTable.enterScope("func:" + (funcName != null ? funcName : "anon"));
             if (func.funcArgs != null) {
+                currentFuncParams = new HashSet<>();
                 for (Node arg : func.funcArgs) {
                     if (arg instanceof IdType) {
                         String argName = ((IdType) arg).name;
+                        currentFuncParams.add(argName);
                         try {
                             defineSymbol(argName, "var", "Node", arg);
                         } catch (RuntimeException e) {
@@ -226,8 +482,13 @@ public class SemanticAnalyzer {
                     }
                 }
             }
+            if (isRouteFunc(func)) {
+                insideRouteFunc = true;
+            }
             analyzeNode(func.decorator);
             analyzeNode(func.funcBlock);
+            currentFuncParams = null;
+            insideRouteFunc = false;
             symbolTable.exitScope();
         } else if (node instanceof Decorator) {
             Decorator dec = (Decorator) node;
@@ -305,6 +566,17 @@ public class SemanticAnalyzer {
             for (Node stmt : block.statements) {
                 analyzeNode(stmt);
             }
+            // Check 8 — Unreachable Code After Return
+            for (int i = 0; i < block.statements.size(); i++) {
+                if (block.statements.get(i) instanceof ReturnLine) {
+                    if (i < block.statements.size() - 1) {
+                        Node nextStmt = block.statements.get(i + 1);
+                        errors.add(new SemanticError(SemanticError.ErrorType.TYPE_ERROR, nextStmt.getLineNumber(), "",
+                                "Unreachable code after return statement"));
+                    }
+                    break;
+                }
+            }
         } else if (node instanceof ExprLine) {
             ExprLine exprLine = (ExprLine) node;
             analyzeNode(exprLine.returnExpr);
@@ -377,6 +649,7 @@ public class SemanticAnalyzer {
 
         boolean hasCallTrailer = false;
         boolean subscriptDirectlyOnBase = false;
+        int positionalArgCount = 0;
 
         if (trailers != null) {
             for (int i = 0; i < trailers.size(); i++) {
@@ -386,13 +659,16 @@ public class SemanticAnalyzer {
                     CallTrailer ct = (CallTrailer) trailer;
                     if (ct.argList instanceof ArgumentList) {
                         ArgumentList al = (ArgumentList) ct.argList;
-                        for (Node arg : al.argList) {
-                            if (arg instanceof Argument) {
-                                Argument a = (Argument) arg;
+                        for (Node argNode : al.argList) {
+                            if (argNode instanceof Argument) {
+                                Argument a = (Argument) argNode;
+                                if (a.argName == null) {
+                                    positionalArgCount++;
+                                }
                                 analyzeNode(a.expr);
                                 // a.argName is a keyword argument parameter name, not a variable read
                             } else {
-                                analyzeNode(arg);
+                                analyzeNode(argNode);
                             }
                         }
                     } else {
@@ -414,6 +690,28 @@ public class SemanticAnalyzer {
                     errors.add(new SemanticError(SemanticError.ErrorType.TYPE_ERROR, val.getLineNumber(), baseName,
                             "'" + baseName + "' is not callable (type: " + baseSym.type + ")"));
                 }
+                // Check 9 — Wrong Argument Count
+                if ("func".equals(baseSym.kind)) {
+                    int expected = baseSym.attributes.get("paramCount") instanceof Integer
+                            ? (Integer) baseSym.attributes.get("paramCount") : 0;
+                    if (positionalArgCount != expected) {
+                        errors.add(new SemanticError(SemanticError.ErrorType.TYPE_ERROR, val.getLineNumber(), baseName,
+                                "'" + baseName + "' expects " + expected + " argument(s), got " + positionalArgCount));
+                    }
+                }
+                // Check 12 — redirect Without url_for
+                if ("redirect".equals(baseName)) {
+                    Node argExpr = extractFirstPositionalArgFromValue(val);
+                    if (argExpr != null && isStringLiteral(argExpr)) {
+                        errors.add(new SemanticError(SemanticError.ErrorType.TYPE_ERROR, val.getLineNumber(), "redirect",
+                                "redirect() called with a string literal — use url_for() instead"));
+                    }
+                }
+                // Check 14 — app.run() Inside a Route
+                if (insideRouteFunc && isAppRun(val)) {
+                    errors.add(new SemanticError(SemanticError.ErrorType.TYPE_ERROR, val.getLineNumber(), "app.run",
+                            "app.run() called inside a route function — move it to 'if __name__ == __main__'"));
+                }
             }
             if (subscriptDirectlyOnBase) {
                 if (baseSym.type != null && !"Node".equals(baseSym.type) && !"unknown".equals(baseSym.type)) {
@@ -424,6 +722,62 @@ public class SemanticAnalyzer {
                 }
             }
         }
+    }
+
+    private Node extractFirstPositionalArgFromValue(Value val) {
+        if (val.trailerList == null) return null;
+        for (Node trailer : val.trailerList) {
+            if (trailer instanceof CallTrailer) {
+                CallTrailer ct = (CallTrailer) trailer;
+                if (ct.argList instanceof ArgumentList) {
+                    ArgumentList al = (ArgumentList) ct.argList;
+                    for (Node argNode : al.argList) {
+                        if (argNode instanceof Argument) {
+                            Argument a = (Argument) argNode;
+                            if (a.argName == null) {
+                                return a.expr;
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private boolean isStringLiteral(Node node) {
+        if (node instanceof StringType) return true;
+        if (node instanceof Value) {
+            Node base = ((Value) node).baseValue;
+            if (base instanceof StringType) return true;
+        }
+        return false;
+    }
+
+    private boolean isAppRun(Value val) {
+        Node base = val.baseValue;
+        String baseName = null;
+        if (base instanceof Name) {
+            baseName = ((IdType) ((Name) base).id).name;
+        } else if (base instanceof IdType) {
+            baseName = ((IdType) base).name;
+        }
+        if (!"app".equals(baseName)) return false;
+        if (val.trailerList == null) return false;
+        boolean foundRun = false;
+        boolean foundCall = false;
+        for (Node t : val.trailerList) {
+            if (t instanceof MemberTrailer) {
+                String attr = t.toString();
+                if (attr.startsWith(".") && attr.length() > 1 && "run".equals(attr.substring(1))) {
+                    foundRun = true;
+                }
+            } else if (t instanceof CallTrailer) {
+                foundCall = true;
+            }
+        }
+        return foundRun && foundCall;
     }
 
     private void analyzeName(Name name) {

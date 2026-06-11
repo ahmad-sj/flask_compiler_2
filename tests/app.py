@@ -53,5 +53,25 @@ def add():
 
     return render_template('add.html')
 
+@app.route('/product/<int:product_id>/edit', methods=['GET', 'POST'])
+def edit(product_id):
+    product = next((p for p in products if p["id"] == product_id), None)
+    if not product:
+        return "Product not found", 404
+    if request.method == 'POST':
+        product["name"] = request.form['name']
+        product["price"] = float(request.form['price'])
+        product["details"] = request.form['details']
+        product["image"] = request.form['image'] or "https://via.placeholder.com/400x300?text=No+Image"
+        return redirect(url_for('detail', product_id=product_id))
+    return render_template('edit.html', product=product)
+
+@app.route('/product/<int:product_id>/delete', methods=['POST'])
+def delete(product_id):
+    target = next((p for p in products if p["id"] == product_id), None)
+    if target:
+        products.remove(target)
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
     app.run(debug=True)

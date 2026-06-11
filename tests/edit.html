@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %} Edit {{ product.name }} {% endblock %}
+
+{% block content %}
+
+<h2>Edit Product</h2>
+
+<form action="{{ url_for('edit', product_id=product.id) }}" method="POST">
+    <label for="name">Name</label>
+    <input type="text" id="name" name="name" value="{{ product.name }}" required />
+
+    <label for="price">Price</label>
+    <input type="number" id="price" name="price" step="0.01" value="{{ product.price }}" required />
+
+    <label for="details">Details</label>
+    <textarea id="details" name="details" rows="4" required>{{ product.details }}</textarea>
+
+    <label for="image">Image URL</label>
+    <input type="text" id="image" name="image" value="{{ product.image }}" />
+
+    <button type="submit">Update Product</button>
+    <a href="{{ url_for('detail', product_id=product.id) }}" class="btn">Cancel</a>
+</form>
+
+{% endblock %}

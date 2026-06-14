@@ -27,7 +27,8 @@ public class AppHandler {
         this.appFile = appFile;
     }
 
-    public void start() {
+    public App start() {
+        App app = null;
         // getting parser for python file
         try {
             // مسار الملف app.py
@@ -63,7 +64,7 @@ public class AppHandler {
 
             // visiting parse tree
             AppVisitor appVisitor = new AppVisitor();
-            App app = appVisitor.visit(tree);
+            app = appVisitor.visit(tree);
 
             // printing AST
             IO.println("================================================================================");
@@ -74,6 +75,7 @@ public class AppHandler {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return app;
     }
 
     // دالة مساعدة لطباعة شجرة Parse Tree بشكل هرمي

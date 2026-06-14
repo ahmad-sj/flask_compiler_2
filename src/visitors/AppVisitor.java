@@ -30,6 +30,7 @@ public class AppVisitor extends pythonParserBaseVisitor<App> {
             System.out.println("[Semantic] " + errors.size() + " error(s) found:");
             for (SemanticError e : errors) System.out.println("  " + e);
         }
+        app.semanticErrors = errors;
         // ───────────────────────────────────────────────────
 
         return app;

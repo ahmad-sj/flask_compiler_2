@@ -13,6 +13,7 @@ C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\antlr\templateParserBaseVisito
 C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\antlr\templateParserListener.java
 C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\antlr\templateParserVisitor.java
 C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\app\AppHandler.java
+C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\app\CodeGenerator.java
 C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\app\FlaskCompiler.java
 C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\app\TemplatesHandler.java
 C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\models\App.java
@@ -120,7 +121,9 @@ C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\symbols\SemanticError.java
 C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\symbols\Symbol.java
 C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\symbols\SymbolTable.java
 C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\visitors\AppVisitor.java
+C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\visitors\JinjaRenderer.java
 C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\visitors\NodeVisitor.java
+C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\visitors\PythonDataExtractor.java
 C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\visitors\PythonVisitor.java
 C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\visitors\SemanticAnalyzer.java
 C:\Users\Lenovo\IdeaProjects\flask_compiler_2\src\visitors\TemplateVisitor.java

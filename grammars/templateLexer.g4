@@ -113,7 +113,7 @@ mode ATTR_VAL;
 
 mode ATTR_VAL_QOUTED;
     ATTR_VAL_J_EXPR_START: '{{' -> pushMode(EXPRESSION_MODE);
-    ATTR_VAL_TEXT: [a-zA-Z0-9-=.]+;
+    ATTR_VAL_TEXT: [a-zA-Z0-9-=.!?:;'(),/#+@%&*_~|]+;
     ATTR_DQUOTE_END: '"' -> popMode, popMode;
     ATTR_VAL_QOUTED_WS: [ \t\r\n,]+ -> skip;
 

@@ -3,6 +3,7 @@ package app;
 import antlr.templateLexer;
 import antlr.templateParser;
 import models.Node;
+import models.NormalText;
 import models.Template;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -12,9 +13,13 @@ import symbols.SymbolTable;
 import visitors.TemplateVisitor;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class TemplatesHandler {
 
@@ -27,13 +32,15 @@ public class TemplatesHandler {
         this.symbolTable = symbolTable;
     }
 
-    public void start() {
+    public Map<String, Template> start() {
+        Map<String, Template> result = new HashMap<>();
         // creating an array with file names to be parsed
         ArrayList<String> fileNames = new ArrayList<>();
         fileNames.add("tests/base.html");
         fileNames.add("tests/index.html");
         fileNames.add("tests/add.html");
         fileNames.add("tests/detail.html");
+        fileNames.add("tests/edit.html");
         fileNames.add("tests/tests.html");
 
         // getting files full paths
@@ -50,20 +57,34 @@ public class TemplatesHandler {
         templateParser parser;
 
         for (int i = 0; i < files.size(); i++) {
-            parser = getParser(files.get(i));
-
-            // tell antlr to build a parse tree
-            // parse from the start symbol (template)
-            ParseTree antlrAST = parser.template();
-
             // getting file name
             String fileName = Paths.get(files.get(i)).getFileName().toString();
+            Template template;
 
-            // create a visitor for converting the parse tree into node object
-            TemplateVisitor templateVisitor = new TemplateVisitor(fileName, symbolTable);
+            if ("base.html".equals(fileName)) {
+                // base.html contains CSS that the template parser cannot handle.
+                // Read it as raw text and wrap it in a NormalText node.
+                try {
+                    String raw = new String(Files.readAllBytes(Paths.get(files.get(i))), StandardCharsets.UTF_8);
+                    template = new Template(fileName);
+                    template.addNode(new NormalText(raw));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                parser = getParser(files.get(i));
 
-            // visit parse tree built by antlr
-            Template template = templateVisitor.visit(antlrAST);
+                // tell antlr to build a parse tree
+                // parse from the start symbol (template)
+                ParseTree antlrAST = parser.template();
+
+                // create a visitor for converting the parse tree into node object
+                TemplateVisitor templateVisitor = new TemplateVisitor(fileName, symbolTable);
+
+                // visit parse tree built by antlr
+                template = templateVisitor.visit(antlrAST);
+            }
+            result.put(fileName, template);
 
             IO.println("\n######################### " + fileName + " #########################\n");
 
@@ -74,6 +95,7 @@ public class TemplatesHandler {
 
         IO.println("\n######################### " + "Symbols Table" + " #########################\n");
         symbolTable.print();
+        return result;
     }
 
     // types of parser and lexer are specific to the grammar name template.

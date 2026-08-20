@@ -95,7 +95,9 @@ public class AstDumper {
     private static Map<String, Object> describeNode(Node node, int depth,
                                                     IdentityHashMap<Object, Boolean> seen) {
         Map<String, Object> out = new LinkedHashMap<>();
+        out.put("id", node.getNodeId());
         out.put("node", node.getClass().getSimpleName());
+        out.put("type", node.getNodeName());
         if (node.getLineNumber() > 0) out.put("line", node.getLineNumber());
 
         // Walk the class hierarchy so inherited fields (tagName, attrList, ...)
@@ -107,6 +109,7 @@ public class AstDumper {
                 // lineNumber and nodeName are already represented above.
                 if ("lineNumber".equals(field.getName())) continue;
                 if ("nodeName".equals(field.getName())) continue;
+                if ("nodeId".equals(field.getName())) continue;
 
                 Object value = readField(field, node);
                 if (value == null) continue;

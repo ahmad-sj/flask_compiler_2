@@ -21,9 +21,27 @@ public class Symbol {
         this.attributes = new HashMap<String, Object>();
     }
 
+    /**
+     * One formatted table row.
+     *
+     * This used to print to stdout and return "", so the symbol table only
+     * appeared by side effect and could not be captured into a file. It also
+     * threw when a symbol had no value.
+     */
     @Override
     public String toString() {
-        System.out.format("%-30s%-30s%-30s%-40s%-30s%n", name, kind, type, value.toString(), scope.name);
-        return "";
+        return String.format("%-30s%-30s%-30s%-40s%-30s",
+                text(name), text(kind), text(type), describeValue(), scope == null ? "" : text(scope.name));
+    }
+
+    /** Values can be large trees, so show a single trimmed line. */
+    private String describeValue() {
+        if (value == null) return "-";
+        String rendered = value.toString().replaceAll("\\s+", " ").trim();
+        return rendered.length() > 38 ? rendered.substring(0, 35) + "..." : rendered;
+    }
+
+    private static String text(String s) {
+        return s == null ? "" : s;
     }
 }

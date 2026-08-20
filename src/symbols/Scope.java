@@ -45,15 +45,51 @@ public class Scope {
         return null; // Not found in this scope or any parent
     }
 
-    public void print() {
+    /**
+     * Updates a symbol in this scope, or the nearest enclosing one that has it.
+     * Null attributes are left unchanged.
+     *
+     * @return true if the symbol was found and updated
+     */
+    public boolean update(String name, String kind, String type, Node value) {
+        Symbol symbol = symbols.get(name);
+        if (symbol != null) {
+            if (kind != null)  symbol.kind = kind;
+            if (type != null)  symbol.type = type;
+            if (value != null) symbol.value = value;
+            return true;
+        }
+        return parent != null && parent.update(name, kind, type, value);
+    }
 
+    /** This scope plus all nested scopes. */
+    public int countScopes() {
+        int total = 1;
+        for (Scope child : children) total += child.countScopes();
+        return total;
+    }
+
+    /** Symbols in this scope plus all nested scopes. */
+    public int countSymbols() {
+        int total = symbols.size();
+        for (Scope child : children) total += child.countSymbols();
+        return total;
+    }
+
+    public void print() {
+        StringBuilder out = new StringBuilder();
+        render(out);
+        System.out.print(out);
+    }
+
+    /** Appends this scope's symbols, then its children's, to out. */
+    public void render(StringBuilder out) {
         for (Map.Entry<String, Symbol> entry : symbols.entrySet()) {
-            System.out.println(entry.getValue());
+            out.append(entry.getValue()).append(System.lineSeparator());
         }
 
         for (Scope child : children) {
-            child.print();
+            child.render(out);
         }
-
     }
 }

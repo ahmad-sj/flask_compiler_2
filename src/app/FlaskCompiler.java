@@ -79,7 +79,7 @@ public class FlaskCompiler {
         if (templates == null) templates = new LinkedHashMap<>();
 
         // ── Dump both ASTs, even if later stages fail ─────────────────────
-        writeAstDumps(config, log, app, templates);
+        writeAstDumps(config, log, app, templates, symbolTable);
 
         if (app == null) {
             writeSemanticReport(config, log, null, templatesHandler.getSyntaxErrors(),
@@ -129,12 +129,34 @@ public class FlaskCompiler {
     // ═══════════════════════════════════════════════════════════════════════
 
     private static void writeAstDumps(CompilerConfig config, BuildLog log,
-                                      App app, Map<String, Template> templates) {
+                                      App app, Map<String, Template> templates,
+                                      SymbolTable symbolTable) {
         log.section("Compiler output");
+
+        // Machine-readable dumps.
         write(config.compilerOutputDir.resolve("ast_python.json"),
                 AstDumper.dumpPythonAst(app, config.appFile().getFileName().toString()), log);
         write(config.compilerOutputDir.resolve("ast_jinja.json"),
                 AstDumper.dumpJinjaAst(templates), log);
+
+        // Human-readable trees, produced by the per-node print methods.
+        String pythonTree = TreePrinter.renderPythonAst(app, config.appFile().getFileName().toString());
+        String jinjaTree = TreePrinter.renderTemplateAsts(templates);
+        String symbols = TreePrinter.renderSymbolTable(symbolTable);
+
+        write(config.compilerOutputDir.resolve("ast_python.txt"), pythonTree, log);
+        write(config.compilerOutputDir.resolve("ast_jinja.txt"), jinjaTree, log);
+        write(config.compilerOutputDir.resolve("symbol_table.txt"), symbols, log);
+
+        // Print during execution, as the project requires. --quiet-ast skips the
+        // console dump; the files above are always written.
+        if (config.printTrees) {
+            System.out.print(pythonTree);
+            System.out.print(jinjaTree);
+            System.out.print(symbols);
+        } else {
+            log.info("Tree dump suppressed (--quiet-ast); see the .txt files above.");
+        }
     }
 
     /**

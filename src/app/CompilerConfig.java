@@ -3,6 +3,8 @@ package app;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Input and output locations for one compiler run.
@@ -37,27 +39,51 @@ public class CompilerConfig {
         this.explicitAppFile = explicitAppFile;
     }
 
+    /** When false, the AST and symbol table are written to files but not echoed. */
+    public boolean printTrees = true;
+
     /**
      * Builds a config from command-line arguments.
      *
-     *   FlaskCompiler [input] [outputDir] [compilerOutputDir]
+     *   FlaskCompiler [input] [outputDir] [compilerOutputDir] [--quiet-ast]
      *
      * input may be a project directory, or a single .py file. Pointing at one
      * file is what the semantic test fixtures use: each is a standalone backend
      * with no templates of its own.
+     *
+     * --quiet-ast suppresses the console tree dump; the text files in
+     * compiler_output/ are written either way.
      */
     public static CompilerConfig fromArgs(String[] args) {
         Path cwd = Paths.get("").toAbsolutePath();
-        Path input = cwd.resolve(args.length > 0 ? args[0] : "project");
-        Path out   = cwd.resolve(args.length > 1 ? args[1] : "output");
-        Path co    = cwd.resolve(args.length > 2 ? args[2] : "compiler_output");
 
+        // Separate flags from positional paths so order does not matter.
+        List<String> positional = new ArrayList<>();
+        boolean quietAst = false;
+        for (String arg : args) {
+            if (arg == null || arg.isEmpty()) continue;
+            if (arg.startsWith("--")) {
+                if ("--quiet-ast".equals(arg)) quietAst = true;
+                else System.err.println("Ignoring unknown option: " + arg);
+            } else {
+                positional.add(arg);
+            }
+        }
+
+        Path input = cwd.resolve(positional.size() > 0 ? positional.get(0) : "project");
+        Path out   = cwd.resolve(positional.size() > 1 ? positional.get(1) : "output");
+        Path co    = cwd.resolve(positional.size() > 2 ? positional.get(2) : "compiler_output");
+
+        CompilerConfig config;
         // A .py path names the backend directly; its folder becomes the input dir.
         if (Files.isRegularFile(input) && input.toString().toLowerCase().endsWith(".py")) {
             Path parent = input.getParent() != null ? input.getParent() : cwd;
-            return new CompilerConfig(parent, out, co, input);
+            config = new CompilerConfig(parent, out, co, input);
+        } else {
+            config = new CompilerConfig(input, out, co, null);
         }
-        return new CompilerConfig(input, out, co, null);
+        config.printTrees = !quietAst;
+        return config;
     }
 
     public Path appFile() {

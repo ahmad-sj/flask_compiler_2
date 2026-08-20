@@ -171,7 +171,8 @@ each visitor overrides the rule methods it cares about and returns model objects
 | `PythonVisitor` | Python rules → `models.python.*` (770 lines) |
 | `TemplateVisitor` | template root → `Template` |
 | `NodeVisitor` | Jinja + HTML + CSS rules → nodes (1272 lines) |
-| `SemanticAnalyzer` | walks the AST for 14 checks (1283 lines) |
+| `SemanticAnalyzer` | walks the Python AST for 14 checks |
+| `TemplateSemanticAnalyzer` | checks each template against the context its route supplies |
 | `PythonDataExtractor` | walks the AST for render data |
 | `JinjaRenderer` + `ExpressionEvaluator` | walk the AST to emit HTML |
 
@@ -292,6 +293,12 @@ Open `output/index.html` for the working UI. Add / edit / delete persist through
 ```
 
 - 7 checks — output layout, asset fidelity, valid JSON, DOCTYPE, no un-rendered Jinja
-- 24 checks — every semantic-error fixture caught **and** blocking generation
+- 27 fixtures — every invalid backend caught **and** blocking generation
+- 3 fixtures — valid backends **not** rejected (false-positive guard, `tests/valid/`)
+- 2 projects — broken templates caught **and** blocking generation (`tests/bad_templates/`)
 - 5 checks — Jinja control flow (`if` / `elif` / `else`, `for` / `for-else`)
 - 24 checks — add / edit / delete driven through the real pages in jsdom
+
+The false-positive group matters as much as the rest: a checker that rejects
+valid programs is worse than one that misses a fault, because it blocks a build
+that should have succeeded.

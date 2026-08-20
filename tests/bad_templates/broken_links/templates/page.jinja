@@ -1,0 +1,10 @@
+{% extends "no_such_layout.jinja" %}
+{% block body %}
+<nav>
+<a href="{{ url_for('home') }}">Home</a>
+<a href="{{ url_for('contact') }}">Contact</a>
+<a href="{{ url_for('admin_panel') }}">Admin</a>
+</nav>
+<p>{{ "x" | shout | reverse }}</p>
+<p>{{ mystery_function(1, 2) }}</p>
+{% endblock %}

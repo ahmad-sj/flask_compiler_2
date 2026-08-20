@@ -1,9 +1,12 @@
 # End-to-end check for the compiler pipeline.
 #
-# Covers the three things that can independently break:
+# Covers what can independently break:
 #   1. the full project builds and produces the specified output layout
 #   2. semantic analysis catches bad backends AND blocks generation
-#   3. Jinja control flow renders correctly (if/elif/else, for/for-else)
+#   3. valid backends are NOT rejected (false-positive guard)
+#   4. broken templates are caught AND block generation
+#   5. Jinja control flow renders correctly (if/elif/else, for/for-else)
+#   6. add / edit / delete persist through localStorage
 #
 # Run .\build.ps1 first, then .\check.ps1
 $ErrorActionPreference = "Stop"
@@ -84,8 +87,38 @@ foreach ($f in $fixtures) {
 }
 if ($failures -eq $before) { Ok "all $($fixtures.Count) caught, all blocked generation" }
 
-# ── 3. Jinja control flow ──────────────────────────────────────────────────
-Write-Host "`n[3] Jinja control flow (if / elif / else, for / for-else):" -ForegroundColor Cyan
+# ── 3. Valid backends must stay clean (false-positive guard) ───────────────
+$valid = Get-ChildItem tests\valid\*.py -ErrorAction SilentlyContinue
+Write-Host "`n[3] Valid backends ($($valid.Count)) must report NO errors:" -ForegroundColor Cyan
+
+$before = $failures
+foreach ($f in $valid) {
+    $o = Run-Compiler "tests\valid\$($f.Name)" "out\scratch\pages" "out\scratch\co"
+    # Any reported error here is a false positive: these programs are legal.
+    $found = ([regex]::Matches($o, '(?m)^\s*ERROR\s+\[')).Count
+    if ($found -gt 0) {
+        Fail "$($f.Name): $found false positive(s)"
+        ($o -split "`n" | Select-String '^\s*ERROR\s+\[') | ForEach-Object {
+            Write-Host "         $($_.Line.Trim())" -ForegroundColor DarkRed }
+    }
+}
+if ($failures -eq $before) { Ok "all $($valid.Count) accepted, no false positives" }
+
+# ── 4. Template semantic errors ────────────────────────────────────────────
+$badTemplates = Get-ChildItem tests\bad_templates -Directory -ErrorAction SilentlyContinue
+Write-Host "`n[4] Broken templates ($($badTemplates.Count) projects) must be caught AND block generation:" -ForegroundColor Cyan
+
+$before = $failures
+foreach ($p in $badTemplates) {
+    $o = Run-Compiler "tests\bad_templates\$($p.Name)" "out\scratch\pages" "out\scratch\co"
+    $found = ([regex]::Matches($o, '(?m)^\s*ERROR\s+\[')).Count
+    if ($found -eq 0) { Fail "$($p.Name): template errors not detected" }
+    elseif ($o -notmatch "must be fixed before generating") { Fail "$($p.Name): errors found but generation ran anyway" }
+    else { Ok "$($p.Name) -> $found error(s), generation blocked" }
+}
+
+# ── 5. Jinja control flow ──────────────────────────────────────────────────
+Write-Host "`n[5] Jinja control flow (if / elif / else, for / for-else):" -ForegroundColor Cyan
 
 $appPy = "tests\render_project\app.py"
 $original = Get-Content $appPy -Raw
@@ -125,8 +158,8 @@ try {
     Remove-Item -Recurse -Force "out\scratch" -ErrorAction SilentlyContinue
 }
 
-# ── 4. Browser runtime (add / edit / delete via localStorage) ──────────────
-Write-Host "`n[4] Browser runtime (add / edit / delete):" -ForegroundColor Cyan
+# ── 6. Browser runtime (add / edit / delete via localStorage) ──────────────
+Write-Host "`n[6] Browser runtime (add / edit / delete):" -ForegroundColor Cyan
 
 $node = Get-Command node -ErrorAction SilentlyContinue
 $hasJsdom = $false

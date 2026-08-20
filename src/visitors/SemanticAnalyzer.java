@@ -69,6 +69,12 @@ public class SemanticAnalyzer {
     /** Set of parameter names for the function currently being analyzed. Null when outside any function. */
     private Set<String> currentFuncParams;
 
+    /** Top-level functions, recorded before any body is analysed (forward references). */
+    private Map<String, Func> moduleFunctions;
+
+    /** Module-level variable names, recorded before any body is analysed. */
+    private Set<String> moduleNames;
+
     /** True when the walker is inside the body of a route-decorated function. */
     private boolean insideRouteFunc;
 
@@ -105,11 +111,21 @@ public class SemanticAnalyzer {
         errors = new ArrayList<>();
         symbolTable = new SymbolTable();
         allDefinitions = new HashMap<>();
+        moduleFunctions = new HashMap<>();
+        moduleNames = new HashSet<>();
         currentFuncParams = null;
         insideRouteFunc = false;
 
         // ── Check 1–6: Flask bootstrap checks (imports, app instance, routes, duplicates)
         checkFlaskBootstrap(app);
+
+        // Hoist module-level function names before analysing any body.
+        // Python binds every module-level name before any function runs, so
+        //     def index(): return helper()
+        //     def helper(): ...
+        // is legal. Walking in file order without this reported 'helper' as
+        // undefined and blocked generation for a program that runs fine.
+        hoistModuleFunctions(app);
 
         // Walk every top-level node and build the symbol table while checking semantics
         for (Node node : app.nodes) {
@@ -1076,6 +1092,11 @@ public class SemanticAnalyzer {
         if (ALWAYS_SAFE.contains(name)) {
             return;
         }
+        // A module-level function is in scope everywhere, including from a
+        // function defined above it.
+        if (moduleFunctions.containsKey(name) || moduleNames.contains(name)) {
+            return;
+        }
         Symbol sym = symbolTable.currentScope.resolve(name);
         if (sym == null) {
             // Not found in current scope chain — but was it defined elsewhere?
@@ -1101,6 +1122,50 @@ public class SemanticAnalyzer {
      * @param type the inferred type (e.g., "IntType", "StringType")
      * @param value the AST node representing the value
      */
+    /**
+     * Records every top-level function name and its arity before any body is
+     * analysed.
+     *
+     * Without this, a call to a function defined further down the file is
+     * reported as an undefined variable — a false positive, since module-level
+     * definitions are all bound before any of them is called.
+     *
+     * Deliberately kept out of the symbol table: defining these up front would
+     * make the main walk see each function as a redefinition of itself.
+     */
+    private void hoistModuleFunctions(App app) {
+        for (Node node : app.nodes) {
+            if (node instanceof Func) {
+                Func func = (Func) node;
+                if (!(func.funcName instanceof IdType)) continue;
+
+                String name = ((IdType) func.funcName).name;
+                // First definition wins; a genuine duplicate is reported by the
+                // redefinition check during the main walk.
+                moduleFunctions.putIfAbsent(name, func);
+
+            } else if (node instanceof AssignLine) {
+                // Module-level variables are bound before any function runs too,
+                // so a function may read one declared further down the file.
+                String name = targetName(((AssignLine) node).target);
+                if (name != null) moduleNames.add(name);
+            }
+        }
+    }
+
+    /** Plain name of an assignment target, or null if it is not a simple name. */
+    private String targetName(Node target) {
+        if (target instanceof IdType) return ((IdType) target).name;
+        return null;
+    }
+
+    /** Parameter count of a hoisted module-level function, or -1 if unknown. */
+    private int hoistedParamCount(String name) {
+        Func func = moduleFunctions.get(name);
+        if (func == null) return -1;
+        return func.funcArgs != null ? func.funcArgs.size() : 0;
+    }
+
     private void defineSymbol(String name, String kind, String type, Node value) {
         symbolTable.currentScope.define(name, kind, type, value);
         Symbol sym = symbolTable.currentScope.resolve(name);

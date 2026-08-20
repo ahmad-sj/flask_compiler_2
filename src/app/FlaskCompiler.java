@@ -6,7 +6,9 @@ import symbols.SemanticError;
 import symbols.SymbolTable;
 import util.BuildLog;
 import util.SyntaxErrors;
+import visitors.PythonDataExtractor;
 import visitors.SemanticAnalyzer;
+import visitors.TemplateSemanticAnalyzer;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -102,8 +104,31 @@ public class FlaskCompiler {
             for (SemanticError error : errors) log.error("  " + error);
         }
 
-        // ── Phase 4: generation ───────────────────────────────────────────
-        CodeGenerator generator = new CodeGenerator(app, templates, config, log);
+        // ── Phase 4: extract the render context from the Python AST ───────
+        PythonDataExtractor extractor = new PythonDataExtractor();
+        extractor.extract(app);
+
+        // ── Phase 5: semantic analysis of the templates ───────────────────
+        // Checks each template against the context the route rendering it
+        // actually supplies. Without this, a template could reference a name no
+        // route passes and the build would still report success.
+        List<SemanticError> templateErrors = config.isSingleFileMode()
+                ? new ArrayList<>()
+                : new TemplateSemanticAnalyzer(templates, extractor.getRoutes(),
+                        extractor.getModuleVars().keySet()).analyze();
+
+        if (templateErrors.isEmpty()) {
+            log.info("No template errors found.");
+        } else {
+            log.error(templateErrors.size() + " template error(s):");
+            for (SemanticError error : templateErrors) log.error("  " + error);
+            errors = new ArrayList<>(errors);
+            errors.addAll(templateErrors);
+            app.semanticErrors = errors;
+        }
+
+        // ── Phase 6: generation ───────────────────────────────────────────
+        CodeGenerator generator = new CodeGenerator(app, templates, config, log, extractor);
         boolean generated = generator.generate();
 
         writeSemanticReport(config, log, errors, templatesHandler.getSyntaxErrors(),

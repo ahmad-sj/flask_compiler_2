@@ -1,0 +1,8 @@
+<div>
+<h1>{{ page_title }}</h1>
+{% for row in rows %}
+<p>{{ row.name }} costs {{ currency }}{{ row.price }}</p>
+{% endfor %}
+<p>Last row was {{ row.name }}</p>
+{% if show_footer %}<footer>{{ footer_text }}</footer>{% endif %}
+</div>

@@ -47,12 +47,17 @@ public class CodeGenerator {
     /** Set while rendering a shell page, whose blank fields are expected. */
     private boolean suppressProblems;
 
+    /** Extraction results, produced by FlaskCompiler before the template checks. */
+    private final PythonDataExtractor extractor;
+
     public CodeGenerator(App app, Map<String, Template> templates,
-                         CompilerConfig config, BuildLog log) {
+                         CompilerConfig config, BuildLog log,
+                         PythonDataExtractor extractor) {
         this.app = app;
         this.templates = templates;
         this.config = config;
         this.log = log;
+        this.extractor = extractor;
     }
 
     public int getPagesGenerated() {
@@ -81,9 +86,9 @@ public class CodeGenerator {
             return false;
         }
 
-        // ── Extract the data the templates will be rendered against ───────
-        PythonDataExtractor extractor = new PythonDataExtractor();
-        extractor.extract(app);
+        // ── Data the templates will be rendered against ───────────────────
+        // Extraction already ran in FlaskCompiler so the template analyzer
+        // could check against the same context this renders with.
         moduleVars = extractor.getModuleVars();
         routes = extractor.getRoutes();
         for (RouteInfo route : routes) routesByName.put(route.name, route);

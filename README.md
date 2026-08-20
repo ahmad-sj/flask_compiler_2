@@ -156,9 +156,19 @@ localStorage.removeItem("flask-compiler-site"); location.reload();
 .\check.ps1
 ```
 
-Checks that the project builds to the specified layout, that all 24 semantic
-fixtures are caught **and** block generation, that Jinja control flow renders
-correctly, and that add/edit/delete persist across page loads.
+Six groups:
+
+| Group | What it proves |
+| --- | --- |
+| Full project | builds to the specified layout, assets copied byte-identical, valid JSON, DOCTYPE, no un-rendered Jinja |
+| Invalid backends (`tests/test_*.py`) | 27 faulty programs caught **and** blocking generation |
+| Valid backends (`tests/valid/`) | legal programs are **not** rejected — a false-positive guard |
+| Broken templates (`tests/bad_templates/`) | template faults caught **and** blocking generation |
+| Jinja control flow | `if` / `elif` / `else` and `for` / `for-else` all render |
+| Browser runtime | add / edit / delete persist across page loads |
+
+The false-positive group is the one that catches the worst class of bug: a
+checker that rejects a valid program blocks a build that should have succeeded.
 
 The last group drives the real generated pages in jsdom. It needs `npm install`
 once; without it that group is skipped and the rest still runs.

@@ -33,6 +33,9 @@ import models.jinja.trailers.MemberTrailer;
 import models.jinja.trailers.SubTrailer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +53,19 @@ import java.util.Map;
  * generated page.
  */
 public class ExpressionEvaluator {
+
+    /** Filters applyFilter understands. The analyzer checks names against this. */
+    public static final Set<String> SUPPORTED_FILTERS = new LinkedHashSet<>(Arrays.asList(
+            "format", "upper", "lower", "title", "trim", "length", "count",
+            "int", "float", "round", "default", "join", "escape", "e"));
+
+    /** Tests the "is" operator understands. */
+    public static final Set<String> SUPPORTED_TESTS = new LinkedHashSet<>(Arrays.asList(
+            "defined", "undefined", "none", "null", "even", "odd", "string", "number"));
+
+    /** Functions callable from a template. */
+    public static final Set<String> SUPPORTED_FUNCTIONS = new LinkedHashSet<>(Arrays.asList(
+            "url_for", "range", "length", "len"));
 
     /** Receives non-fatal problems found while evaluating. */
     public interface Problems {

@@ -4,9 +4,10 @@
 
 {% block content %}
 
-<h2>{{ product.name }}</h2>
+<h2 data-field="name">{{ product.name }}</h2>
 
 <div
+        data-detail="products"
         style="
     display: flex;
     gap: 2rem;
@@ -19,6 +20,7 @@
 >
     <div>
         <img
+                data-field="image"
                 src="{{ product.image }}"
                 alt="{{ product.name }}"
                 style="max-width: 400px; border-radius: 8px;"
@@ -29,15 +31,15 @@
         <h3 style="margin-top: 0;">
             Price:
             <span style="color: #28a745; font-size: 1.8rem;"
-            >${{ "%.2f"|format(product.price) }}</span
+            >$<span data-field="price">{{ "%.2f"|format(product.price) }}</span></span
             >
         </h3>
 
-        <p> <strong> Details: </strong> <br /> {{ product.details }} </p>
+        <p> <strong> Details: </strong> <br /> <span data-field="details">{{ product.details }}</span> </p>
 
         <a href="{{ url_for('index') }}" class="btn">Back to List</a>
-        <a href="{{ url_for('edit', product_id=product.id) }}" class="btn">Edit</a>
-        <form action="{{ url_for('delete', product_id=product.id) }}" method="POST" style="display: inline;" data-confirm="Are you sure you want to delete this product?">
+        <a href="{{ url_for('edit', product_id=product.id) }}" class="btn" data-link="edit">Edit</a>
+        <form data-action="delete" data-redirect="index" method="POST" style="display: inline;" data-confirm="Are you sure you want to delete this product?">
             <button type="submit" class="btn btn-danger">Delete</button>
         </form>
     </div>

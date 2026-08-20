@@ -125,6 +125,27 @@ try {
     Remove-Item -Recurse -Force "out\scratch" -ErrorAction SilentlyContinue
 }
 
+# ── 4. Browser runtime (add / edit / delete via localStorage) ──────────────
+Write-Host "`n[4] Browser runtime (add / edit / delete):" -ForegroundColor Cyan
+
+$node = Get-Command node -ErrorAction SilentlyContinue
+$hasJsdom = $false
+if ($node) {
+    node -e "require.resolve('jsdom')" 2>$null | Out-Null
+    $hasJsdom = ($LASTEXITCODE -eq 0)
+}
+
+if (-not $node) {
+    Write-Host "    skip - node not on PATH" -ForegroundColor DarkGray
+} elseif (-not $hasJsdom) {
+    Write-Host "    skip - jsdom not installed (run: npm install jsdom)" -ForegroundColor DarkGray
+} else {
+    # The full project must be built first; section 1 already did that.
+    $runtime = node tests\runtime-test.js "output" 2>&1 | Out-String
+    Write-Host ($runtime.TrimEnd())
+    if ($LASTEXITCODE -ne 0) { $failures++ }
+}
+
 # ── Verdict ────────────────────────────────────────────────────────────────
 Write-Host ""
 if ($failures -eq 0) {

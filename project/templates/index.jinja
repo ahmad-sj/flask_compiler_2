@@ -5,10 +5,10 @@
 {% block content %}
 <h2>All Products</h2>
 
-<div class="card-grid">
+<div class="card-grid" data-list="products">
 
     {% for product in products %}
-    <div class="card">
+    <div class="card" data-item>
         <img src="{{ product.image }}" alt="{{ product.name }}" />
         <div class="card-body">
             <h3 class="card-title">{{ product.name }}</h3>
@@ -18,7 +18,7 @@
     </div>
 
     {% else %}
-    <p>
+    <p data-empty>
         No products yet.
         <a href="{{ url_for('add') }}">Add the first one!</a>
     </p>
@@ -26,4 +26,22 @@
     {% endfor %}
 
 </div>
+
+<template data-item-template>
+    <div class="card" data-item>
+        <img src="__IMAGE__" alt="__NAME__" />
+        <div class="card-body">
+            <h3 class="card-title">__NAME__</h3>
+            <p class="price">$__PRICE__</p>
+            <a href="product_detail.html?id=__ID__" class="btn"> View Details </a>
+        </div>
+    </div>
+</template>
+
+<template data-empty-template>
+    <p data-empty>
+        No products yet.
+        <a href="add_product.html">Add the first one!</a>
+    </p>
+</template>
 {% endblock %}

@@ -6,7 +6,7 @@
 
 <h2>Edit Product</h2>
 
-<form action="{{ url_for('edit', product_id=product.id) }}" method="POST">
+<form method="POST" data-form="edit" data-redirect="detail">
     <label for="name">Name</label>
     <input type="text" id="name" name="name" value="{{ product.name }}" required />
 
@@ -20,7 +20,7 @@
     <input type="text" id="image" name="image" value="{{ product.image }}" />
 
     <button type="submit">Update Product</button>
-    <a href="{{ url_for('detail', product_id=product.id) }}" class="btn">Cancel</a>
+    <a href="{{ url_for('detail', product_id=product.id) }}" class="btn" data-link="detail">Cancel</a>
 </form>
 
 {% endblock %}

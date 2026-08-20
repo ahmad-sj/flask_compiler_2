@@ -116,6 +116,40 @@ Nothing is hardcoded to any particular variable name.
 | Tests | `defined`, `undefined`, `none`, `even`, `odd`, `string`, `number` |
 | `url_for()` | resolves to the generated page, including per-item pages |
 
+## Working add / edit / delete
+
+The generated site is static, so those actions have no server to post to. The
+runtime in `script.js` keeps the collection in `localStorage` instead — the same
+idea as stashing an auth token there. It is seeded once from `data.js` (which
+the compiler emits from the build-time data) and is the source of truth from
+then on.
+
+| Page | Behaviour |
+| --- | --- |
+| index | list re-rendered from storage, so it shows added/edited/deleted items |
+| add | form intercepted, item appended with the next free key, back to index |
+| edit | form pre-filled from storage, saved back, on to the detail page |
+| detail | fields hydrated from storage, so edits are visible |
+| delete | confirms, removes from storage, back to index |
+
+Items created in the browser have no pre-rendered page — the compiler never saw
+them — so the generator also emits an un-suffixed shell page per parameterized
+route (`product_detail.html`, `edit_product.html`). The runtime sends new items
+there as `product_detail.html?product_id=4` and fills in the fields.
+
+Pre-rendered per-item pages are still generated and still contain real content,
+so the site reads correctly with JavaScript disabled.
+
+Nothing in `script.js` names `product` or `products`. The collection, its key
+field and each route's page all come from the metadata in `data.js`, so it works
+for whatever model the backend defines.
+
+Storage is reset by clearing the site's `localStorage`, or from the console:
+
+```js
+localStorage.removeItem("flask-compiler-site"); location.reload();
+```
+
 ## Verify
 
 ```powershell
@@ -123,8 +157,11 @@ Nothing is hardcoded to any particular variable name.
 ```
 
 Checks that the project builds to the specified layout, that all 24 semantic
-fixtures are caught **and** block generation, and that Jinja control flow
-renders correctly.
+fixtures are caught **and** block generation, that Jinja control flow renders
+correctly, and that add/edit/delete persist across page loads.
+
+The last group drives the real generated pages in jsdom. It needs `npm install`
+once; without it that group is skipped and the rest still runs.
 
 ## Known limitations
 

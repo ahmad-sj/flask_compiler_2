@@ -1,0 +1,11 @@
+{
+  "name": "flask-compiler-site-tests",
+  "private": true,
+  "description": "Dev-only: jsdom drives the generated static site in tests/runtime-test.js.",
+  "scripts": {
+    "test:runtime": "node tests/runtime-test.js output"
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  }
+}

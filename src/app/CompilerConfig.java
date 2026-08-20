@@ -42,6 +42,12 @@ public class CompilerConfig {
     /** When false, the AST and symbol table are written to files but not echoed. */
     public boolean printTrees = true;
 
+    /** Echo the lexer token streams. Off by default: they are long. */
+    public boolean printTokens = false;
+
+    /** Echo the ANTLR parse trees. Off by default: they are very long. */
+    public boolean printParseTree = false;
+
     /**
      * Builds a config from command-line arguments.
      *
@@ -60,11 +66,18 @@ public class CompilerConfig {
         // Separate flags from positional paths so order does not matter.
         List<String> positional = new ArrayList<>();
         boolean quietAst = false;
+        boolean tokens = false;
+        boolean parseTree = false;
         for (String arg : args) {
             if (arg == null || arg.isEmpty()) continue;
             if (arg.startsWith("--")) {
-                if ("--quiet-ast".equals(arg)) quietAst = true;
-                else System.err.println("Ignoring unknown option: " + arg);
+                switch (arg) {
+                    case "--quiet-ast":       quietAst = true; break;
+                    case "--print-tokens":    tokens = true; break;
+                    case "--print-parse-tree": parseTree = true; break;
+                    case "--print-all":       tokens = true; parseTree = true; quietAst = false; break;
+                    default: System.err.println("Ignoring unknown option: " + arg);
+                }
             } else {
                 positional.add(arg);
             }
@@ -83,6 +96,8 @@ public class CompilerConfig {
             config = new CompilerConfig(input, out, co, null);
         }
         config.printTrees = !quietAst;
+        config.printTokens = tokens;
+        config.printParseTree = parseTree;
         return config;
     }
 

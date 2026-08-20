@@ -29,6 +29,11 @@ public class AppHandler {
     private final BuildLog log;
     private SyntaxErrors syntaxErrors;
 
+    // Kept so the token stream and parse tree can be dumped after parsing.
+    private CommonTokenStream tokenStream;
+    private ParseTree parseTree;
+    private pythonParser parser;
+
     public AppHandler(CompilerConfig config, BuildLog log) {
         this.config = config;
         this.log = log;
@@ -36,6 +41,18 @@ public class AppHandler {
 
     public SyntaxErrors getSyntaxErrors() {
         return syntaxErrors;
+    }
+
+    public CommonTokenStream getTokenStream() {
+        return tokenStream;
+    }
+
+    public ParseTree getParseTree() {
+        return parseTree;
+    }
+
+    public pythonParser getParser() {
+        return parser;
     }
 
     /** Returns the parsed AST, or null if the file is missing or unparseable. */
@@ -60,12 +77,14 @@ public class AppHandler {
             lexer.addErrorListener(syntaxErrors);
 
             CommonTokenStream tokens = new CommonTokenStream(lexer);
+            this.tokenStream = tokens;
 
-            pythonParser parser = new pythonParser(tokens);
+            parser = new pythonParser(tokens);
             parser.removeErrorListeners();
             parser.addErrorListener(syntaxErrors);
 
             ParseTree tree = parser.prog();
+            this.parseTree = tree;
 
             if (!syntaxErrors.isEmpty()) {
                 log.error(syntaxErrors.count() + " syntax error(s) in " + fileName + ":");

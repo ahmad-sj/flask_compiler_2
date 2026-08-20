@@ -280,8 +280,59 @@ java -cp "out\classes;dependencies\antlr-4.13.2-complete.jar" app.FlaskCompiler
 ```
 
 Prints the Python AST, every template AST, and the symbol table, then generates
-the site into `output/`. Add `--quiet-ast` to suppress the console dump (the
-`.txt` files are written either way).
+the site into `output/`.
+
+Every stage of the front-end can be printed during execution:
+
+| Flag | Console output | Lines |
+| --- | --- | ---: |
+| *(none)* | AST + symbol table | ~970 |
+| `--print-tokens` | also the lexer token streams | ~2,800 |
+| `--print-parse-tree` | also the ANTLR parse trees | ~6,100 |
+| `--print-all` | all four stages | ~8,000 |
+| `--quiet-ast` | none | ~60 |
+
+Regardless of the flags, every stage is written to `compiler_output/`:
+`tokens.txt`, `parse_tree.txt`, `ast_python.txt`, `ast_jinja.txt`,
+`symbol_table.txt`, plus the JSON dumps.
+
+### The four stages, and how they differ
+
+```
+source ──▶ LEXER TOKENS ──▶ PARSE TREE ──▶ AST ──▶ SYMBOL TABLE
+           flat token       one node per   model    names, kinds,
+           stream           grammar rule   classes  scopes
+```
+
+**Tokens** are the flat stream, showing the synthetic INDENT/DEDENT the Python
+lexer inserts and the mode switches the template lexer performs:
+
+```
+98     23:4       INDENT                     '    '   <-- synthetic
+ 4     3:0        J_STMNT_START              '{%'
+```
+
+**Parse tree** is the concrete syntax tree: every grammar rule that matched,
+including punctuation the AST discards. It shows the derivation, e.g. how the
+`'/'` in `@app.route('/')` descends the whole expression-precedence chain:
+
+```
+decorator   (line 25)
+  '@'
+  name   (line 25)
+    id   (line 25)
+      'app'
+    dotTrailer   (line 25)
+      '.'
+      'route'
+  callArgs   (line 25)
+    callList → callArg → ternaryExpr → orExpr → andExpr
+             → equalExpr → compareExpr → addExpr → mulExpr
+             → singleExpr → value → baseValue → literal → string
+                                                            ''/''
+```
+
+**AST** is the model tree — the same route, with the noise gone (see §5).
 
 Open `output/index.html` for the working UI. Add / edit / delete persist through
 `localStorage` — see [README.md](README.md).

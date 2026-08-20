@@ -80,7 +80,9 @@ public class FlaskCompiler {
         Map<String, Template> templates = templatesHandler.parseAll();
         if (templates == null) templates = new LinkedHashMap<>();
 
-        // ── Dump both ASTs, even if later stages fail ─────────────────────
+        // ── Dump every stage, even if later ones fail ─────────────────────
+        // Order matters for the console: tokens, then parse tree, then AST.
+        writeStageDumps(config, log, appHandler, templatesHandler);
         writeAstDumps(config, log, app, templates, symbolTable);
 
         if (app == null) {
@@ -182,6 +184,44 @@ public class FlaskCompiler {
         } else {
             log.info("Tree dump suppressed (--quiet-ast); see the .txt files above.");
         }
+    }
+
+    /**
+     * Writes the lexer token streams and ANTLR parse trees.
+     *
+     * These are the two stages before the AST: the tokens the lexer produced,
+     * and the concrete syntax tree showing which grammar rules matched. They are
+     * far longer than the AST, so the console dump is opt-in via --print-tokens
+     * and --print-parse-tree while the files are always written.
+     */
+    private static void writeStageDumps(CompilerConfig config, BuildLog log,
+                                        AppHandler appHandler,
+                                        TemplatesHandler templatesHandler) {
+        StringBuilder tokens = new StringBuilder();
+        StringBuilder trees = new StringBuilder();
+
+        String appName = config.appFile().getFileName().toString();
+        if (appHandler.getTokenStream() != null) {
+            tokens.append(TreePrinter.renderTokens(appHandler.getTokenStream(),
+                    antlr.pythonLexer.VOCABULARY, appName));
+        }
+        if (appHandler.getParseTree() != null) {
+            trees.append(TreePrinter.renderParseTree(appHandler.getParseTree(),
+                    appHandler.getParser(), appName));
+        }
+
+        for (Map.Entry<String, TemplatesHandler.Parsed> entry : templatesHandler.getParsed().entrySet()) {
+            TemplatesHandler.Parsed p = entry.getValue();
+            tokens.append(TreePrinter.renderTokens(p.tokens,
+                    antlr.templateLexer.VOCABULARY, entry.getKey()));
+            trees.append(TreePrinter.renderParseTree(p.tree, p.parser, entry.getKey()));
+        }
+
+        write(config.compilerOutputDir.resolve("tokens.txt"), tokens.toString(), log);
+        write(config.compilerOutputDir.resolve("parse_tree.txt"), trees.toString(), log);
+
+        if (config.printTokens)    System.out.print(TreePrinter.forConsole(tokens.toString()));
+        if (config.printParseTree) System.out.print(TreePrinter.forConsole(trees.toString()));
     }
 
     /**

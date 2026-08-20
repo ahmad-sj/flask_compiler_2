@@ -5,7 +5,16 @@ import models.Node;
 import models.Template;
 import symbols.SymbolTable;
 
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.Parser;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.Vocabulary;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.Trees;
+
 import java.nio.charset.Charset;
+import java.util.List;
 
 import java.util.Map;
 
@@ -84,6 +93,103 @@ public final class TreePrinter {
            .append("   Symbols: ").append(symbolTable.symbolCount())
            .append(nl());
         return out.toString();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  LEXER TOKENS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Renders the token stream: what the lexer produced, before any parsing.
+     *
+     * Shown as index, line:column, symbolic token name and text. Newlines and
+     * tabs are escaped so one token stays on one line, and the synthetic
+     * INDENT/DEDENT tokens the Python lexer inserts are marked, since they are
+     * the whole reason an indentation-sensitive language can be parsed by a
+     * context-free grammar.
+     */
+    public static String renderTokens(CommonTokenStream tokens, Vocabulary vocabulary,
+                                      String sourceName) {
+        StringBuilder out = new StringBuilder();
+        banner(out, "LEXER TOKENS - " + sourceName);
+
+        tokens.fill();
+        List<Token> list = tokens.getTokens();
+
+        out.append(String.format("%-6s %-10s %-26s %s", "#", "line:col", "token", "text")).append(nl());
+        out.append(divider());
+
+        int shown = 0;
+        for (Token token : list) {
+            if (token.getType() == Token.EOF) continue;
+            String name = vocabulary.getSymbolicName(token.getType());
+            if (name == null) name = vocabulary.getDisplayName(token.getType());
+
+            String text = token.getText()
+                    .replace("\\", "\\\\").replace("\r", "\\r")
+                    .replace("\n", "\\n").replace("\t", "\\t");
+            if (text.length() > 40) text = text.substring(0, 37) + "...";
+
+            String marker = "";
+            if (name != null && name.contains("INDENT")) marker = "   <-- synthetic";
+
+            out.append(String.format("%-6d %-10s %-26s '%s'%s",
+                    shown++, token.getLine() + ":" + token.getCharPositionInLine(),
+                    name, text, marker)).append(nl());
+        }
+        out.append(nl()).append("Total tokens: ").append(shown).append(nl());
+        return out.toString();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  PARSE TREE (concrete syntax tree)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Renders the ANTLR parse tree: every grammar rule the parser matched.
+     *
+     * This is the concrete syntax tree, distinct from the AST. It contains one
+     * node per grammar rule and per token, including punctuation the AST throws
+     * away, so it shows how the grammar actually derived the input.
+     */
+    public static String renderParseTree(ParseTree tree, Parser parser, String sourceName) {
+        StringBuilder out = new StringBuilder();
+        banner(out, "PARSE TREE - " + sourceName);
+        if (tree == null) {
+            out.append("(no parse tree)").append(nl());
+            return out.toString();
+        }
+        int[] nodeCount = {0};
+        appendParseNode(out, tree, parser, 0, nodeCount);
+        out.append(nl()).append("Total parse-tree nodes: ").append(nodeCount[0]).append(nl());
+        return out.toString();
+    }
+
+    private static void appendParseNode(StringBuilder out, ParseTree tree, Parser parser,
+                                        int depth, int[] count) {
+        count[0]++;
+
+        for (int i = 0; i < depth; i++) out.append("  ");
+
+        String text = Trees.getNodeText(tree, parser);
+        boolean isRule = tree instanceof ParserRuleContext;
+
+        if (isRule) {
+            // A grammar rule: name it and show where it starts.
+            ParserRuleContext rule = (ParserRuleContext) tree;
+            out.append(text);
+            if (rule.getStart() != null) out.append("   (line ").append(rule.getStart().getLine()).append(')');
+        } else {
+            // A terminal: show the matched text, escaped onto one line.
+            String escaped = text.replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t");
+            if (escaped.length() > 40) escaped = escaped.substring(0, 37) + "...";
+            out.append("'").append(escaped).append("'");
+        }
+        out.append(nl());
+
+        for (int i = 0; i < tree.getChildCount(); i++) {
+            appendParseNode(out, tree.getChild(i), parser, depth + 1, count);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════

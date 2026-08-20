@@ -35,10 +35,30 @@ public class TemplatesHandler {
     /** Extensions treated as templates. */
     private static final String[] TEMPLATE_EXTENSIONS = {".jinja", ".html", ".jinja2", ".htm"};
 
+    /** One template's lexer and parser output, kept for the dumps. */
+    public static class Parsed {
+        public final CommonTokenStream tokens;
+        public final ParseTree tree;
+        public final templateParser parser;
+
+        Parsed(CommonTokenStream tokens, ParseTree tree, templateParser parser) {
+            this.tokens = tokens;
+            this.tree = tree;
+            this.parser = parser;
+        }
+    }
+
     private final CompilerConfig config;
     private final SymbolTable symbolTable;
     private final BuildLog log;
     private final List<SyntaxErrors.Entry> allSyntaxErrors = new ArrayList<>();
+
+    /** Token stream and parse tree per template file, in parse order. */
+    private final Map<String, Parsed> parsed = new LinkedHashMap<>();
+
+    public Map<String, Parsed> getParsed() {
+        return parsed;
+    }
 
     public TemplatesHandler(CompilerConfig config, SymbolTable symbolTable, BuildLog log) {
         this.config = config;
@@ -122,6 +142,7 @@ public class TemplatesHandler {
             parser.addErrorListener(errors);
 
             ParseTree tree = parser.template();
+            parsed.put(name, new Parsed(tokens, tree, parser));
 
             if (!errors.isEmpty()) {
                 allSyntaxErrors.addAll(errors.getEntries());

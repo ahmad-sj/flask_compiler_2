@@ -1,0 +1,4 @@
+# Shell scripts must keep LF endings or they break under sh on Linux/WSL.
+# Deliberately scoped to *.sh only - a broad `* text=auto` would renormalize
+# every existing file and churn both feature branches.
+*.sh text eol=lf

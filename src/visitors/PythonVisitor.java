@@ -385,7 +385,13 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
                 exprList.add(this.visit(ctx.mulExpr().get(i)));
             }
 
-            AddExpression addExpression = new AddExpression(exprList);
+            // Keep the operators: without them '-' was indistinguishable from '+'.
+            ArrayList<Node> operatorList = new ArrayList<>();
+            for (int i = 0; i < ctx.addExprOptor().size(); i++) {
+                operatorList.add(this.visit(ctx.addExprOptor().get(i)));
+            }
+
+            AddExpression addExpression = new AddExpression(exprList, operatorList);
             addExpression.setNodeName("add expr");
             addExpression.setLineNumber(ctx.getStart().getLine());
 

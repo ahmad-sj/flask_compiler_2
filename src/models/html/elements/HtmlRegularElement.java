@@ -5,7 +5,7 @@ import models.Node;
 import java.util.ArrayList;
 
 public class HtmlRegularElement extends HtmlElement {
-    Node elementBody; // object of type NodeBody
+    public Node elementBody; // object of type NodeBody
 
     public HtmlRegularElement(String tagName, ArrayList<Node> attrList, Node elementBody) {
         super(tagName, attrList);

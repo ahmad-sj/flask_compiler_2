@@ -3,8 +3,8 @@ package models.jinja.expressions;
 import models.Node;
 
 public class FilterExpression extends Expression {
-    Node filterName;
-    Node argList;
+    public Node filterName;
+    public Node argList;
 
     public FilterExpression(Node filterName, Node argList) {
         this.filterName = filterName;

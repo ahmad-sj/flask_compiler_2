@@ -1,8 +1,9 @@
-# Integration check: proves semantic analysis and code generation work together.
+# End-to-end check for the compiler pipeline.
 #
-# The contract between the two phases is:
-#   valid app    -> [Semantic] finds nothing -> [CodeGen] produces HTML
-#   invalid app  -> [Semantic] reports it    -> [CodeGen] refuses to run
+# Covers the three things that can independently break:
+#   1. the full project builds and produces the specified output layout
+#   2. semantic analysis catches bad backends AND blocks generation
+#   3. Jinja control flow renders correctly (if/elif/else, for/for-else)
 #
 # Run .\build.ps1 first, then .\check.ps1
 $ErrorActionPreference = "Stop"
@@ -14,53 +15,120 @@ if (-not (Test-Path "out\classes\app\FlaskCompiler.class")) {
 }
 
 $failures = 0
+function Fail($msg) { Write-Host "    FAIL $msg" -ForegroundColor Red; $script:failures++ }
+function Ok($msg)   { Write-Host "    ok   $msg" -ForegroundColor Green }
 
-# --- Part 1: a valid app must generate HTML -------------------------------
-Write-Host "`n[1] Valid app (tests\app.py) should GENERATE:" -ForegroundColor Cyan
-$out = java -cp $CP app.FlaskCompiler tests\app.py 2>&1 | Out-String
-
-if ($out -match "\[Semantic\] No errors found") {
-    Write-Host "    ok   semantic analysis passed it" -ForegroundColor Green
-} else {
-    Write-Host "    FAIL semantic analysis reported errors on a valid app" -ForegroundColor Red; $failures++
+function Run-Compiler($inputPath, $outDir, $coDir) {
+    # stderr is folded in so a stack trace shows up in the captured output.
+    return (java -cp $CP app.FlaskCompiler $inputPath $outDir $coDir 2>&1 | Out-String)
 }
 
-if ($out -match "\[CodeGen\] Generated (\d+) HTML files" -and [int]$Matches[1] -gt 0) {
-    Write-Host "    ok   code generation produced $($Matches[1]) files" -ForegroundColor Green
-} else {
-    Write-Host "    FAIL code generation produced nothing" -ForegroundColor Red; $failures++
-}
+# ── 1. Full project ────────────────────────────────────────────────────────
+Write-Host "`n[1] Full project (project\ -> output\ + compiler_output\):" -ForegroundColor Cyan
 
-# Rendering really happened if no Jinja tags survive in the output.
-$leftover = Get-ChildItem out\generated\*.html -ErrorAction SilentlyContinue |
-            Select-String -Pattern '\{\{|\{%' -List
-if ($leftover) {
-    Write-Host "    FAIL un-rendered Jinja left in: $($leftover.Filename -join ', ')" -ForegroundColor Red; $failures++
-} else {
-    Write-Host "    ok   all Jinja fully rendered, no tags left behind" -ForegroundColor Green
-}
+Remove-Item -Recurse -Force output, compiler_output -ErrorAction SilentlyContinue
+$out = Run-Compiler "project" "output" "compiler_output"
 
-# --- Part 2: every invalid app must be caught AND block codegen -----------
+if ($out -match "No semantic errors found") { Ok "backend passed semantic analysis" }
+else { Fail "semantic analysis reported errors on a valid project" }
+
+# Every page the spec calls for, plus the per-item pages.
+$expectedPages = @("index.html", "add_product.html",
+                   "product_detail_1.html", "product_detail_2.html", "product_detail_3.html",
+                   "edit_product_1.html", "edit_product_2.html", "edit_product_3.html")
+$missingPages = $expectedPages | Where-Object { -not (Test-Path "output\$_") }
+if ($missingPages) { Fail "missing generated pages: $($missingPages -join ', ')" }
+else { Ok "all $($expectedPages.Count) expected pages generated" }
+
+# Static assets must be copied through untransformed.
+foreach ($asset in @("app.py", "style.css", "script.js")) {
+    if (-not (Test-Path "output\$asset")) { Fail "static asset not copied: $asset"; continue }
+    $src = Get-FileHash "project\$asset" -Algorithm MD5
+    $dst = Get-FileHash "output\$asset" -Algorithm MD5
+    if ($src.Hash -ne $dst.Hash) { Fail "$asset was modified during copy" }
+}
+if ($failures -eq 0) { Ok "app.py / style.css / script.js copied byte-identical" }
+
+# compiler_output artifacts.
+foreach ($artifact in @("ast_python.json", "ast_jinja.json", "semantic_report.txt", "generation_log.txt")) {
+    if (-not (Test-Path "compiler_output\$artifact")) { Fail "missing artifact: $artifact" }
+}
+Ok "compiler_output artifacts present"
+
+# The AST dumps must be valid JSON, not just non-empty.
+foreach ($json in @("ast_python.json", "ast_jinja.json")) {
+    try { Get-Content "compiler_output\$json" -Raw | ConvertFrom-Json | Out-Null }
+    catch { Fail "$json is not valid JSON: $($_.Exception.Message)" }
+}
+Ok "AST dumps parse as valid JSON"
+
+# Rendering completeness.
+$leftover = Get-ChildItem output\*.html | Select-String -Pattern '\{\{|\{%' -List
+if ($leftover) { Fail "un-rendered Jinja left in: $($leftover.Filename -join ', ')" }
+else { Ok "no un-rendered Jinja tags remain" }
+
+$noDoctype = Get-ChildItem output\*.html | Where-Object {
+    -not (Select-String -Path $_.FullName -Pattern '<!DOCTYPE' -Quiet) }
+if ($noDoctype) { Fail "pages missing DOCTYPE: $($noDoctype.Name -join ', ')" }
+else { Ok "every page declares a DOCTYPE" }
+
+# ── 2. Semantic fixtures ───────────────────────────────────────────────────
 $fixtures = Get-ChildItem tests\test_*.py
-Write-Host "`n[2] Invalid apps ($($fixtures.Count) fixtures) should be CAUGHT and BLOCK codegen:" -ForegroundColor Cyan
+Write-Host "`n[2] Invalid backends ($($fixtures.Count) fixtures) must be caught AND block generation:" -ForegroundColor Cyan
 
+$before = $failures
 foreach ($f in $fixtures) {
-    $o = java -cp $CP app.FlaskCompiler "tests\$($f.Name)" 2>&1 | Out-String
-    $caught  = $o -match "\[Semantic\] \d+ error\(s\) found"
-    $blocked = $o -match "Skipping code generation"
-
-    if ($caught -and $blocked) { continue }
-
-    if (-not $caught)  { Write-Host "    FAIL $($f.Name): error not detected" -ForegroundColor Red }
-    elseif (-not $blocked) { Write-Host "    FAIL $($f.Name): error found but codegen ran anyway" -ForegroundColor Red }
-    $failures++
+    $o = Run-Compiler "tests\$($f.Name)" "out\scratch\pages" "out\scratch\co"
+    if ($o -notmatch "semantic error\(s\)")            { Fail "$($f.Name): error not detected" }
+    elseif ($o -notmatch "must be fixed before generating") { Fail "$($f.Name): error found but generation ran anyway" }
 }
-if ($failures -eq 0) { Write-Host "    ok   all $($fixtures.Count) caught, all blocked codegen" -ForegroundColor Green }
+if ($failures -eq $before) { Ok "all $($fixtures.Count) caught, all blocked generation" }
 
-# --- Verdict --------------------------------------------------------------
+# ── 3. Jinja control flow ──────────────────────────────────────────────────
+Write-Host "`n[3] Jinja control flow (if / elif / else, for / for-else):" -ForegroundColor Cyan
+
+$appPy = "tests\render_project\app.py"
+$original = Get-Content $appPy -Raw
+
+# stock value, items literal, substring the rendered page must contain
+$cases = @(
+    @{ desc = "if branch";    stock = 50; items = "[]";                 expect = "plenty" },
+    @{ desc = "elif branch";  stock = 5;  items = "[]";                 expect = "low" },
+    @{ desc = "else branch";  stock = 0;  items = "[]";                 expect = "out of stock" },
+    @{ desc = "for-else";     stock = 0;  items = "[]";                 expect = "nothing here" },
+    @{ desc = "for body";     stock = 0;  items = '["alpha", "beta"]';  expect = "alpha" }
+)
+
+try {
+    foreach ($c in $cases) {
+        $src = $original -replace '(?m)^stock = .*$', "stock = $($c.stock)" `
+                         -replace '(?m)^items = .*$', "items = $($c.items)"
+        Set-Content $appPy -Value $src -Encoding utf8 -NoNewline
+
+        Remove-Item -Recurse -Force "tests\render_project\out" -ErrorAction SilentlyContinue
+        Run-Compiler "tests\render_project" "tests\render_project\out" "tests\render_project\co" | Out-Null
+
+        $page = "tests\render_project\out\branches.html"
+        if (-not (Test-Path $page)) { Fail "$($c.desc): no page generated"; continue }
+
+        $html = (Get-Content $page -Raw) -replace '\s+', ' '
+        if ($html -notmatch [regex]::Escape($c.expect)) {
+            Fail "$($c.desc): expected '$($c.expect)' in output"
+        } else {
+            Ok "$($c.desc) -> '$($c.expect)'"
+        }
+    }
+} finally {
+    # Always restore the fixture, even if a case threw.
+    Set-Content $appPy -Value $original -Encoding utf8 -NoNewline
+    Remove-Item -Recurse -Force "tests\render_project\out", "tests\render_project\co" -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force "out\scratch" -ErrorAction SilentlyContinue
+}
+
+# ── Verdict ────────────────────────────────────────────────────────────────
 Write-Host ""
 if ($failures -eq 0) {
-    Write-Host "PASS - semantic analysis and code generation are working together." -ForegroundColor Green
+    Write-Host "PASS - pipeline works end to end." -ForegroundColor Green
     exit 0
 } else {
     Write-Host "FAIL - $failures problem(s) found." -ForegroundColor Red

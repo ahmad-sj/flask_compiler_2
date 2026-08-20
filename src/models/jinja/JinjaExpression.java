@@ -3,7 +3,7 @@ package models.jinja;
 import models.Node;
 
 public class JinjaExpression extends Node {
-    Node expression;
+    public Node expression;
 
     public JinjaExpression(Node expression) {
         this.expression = expression;

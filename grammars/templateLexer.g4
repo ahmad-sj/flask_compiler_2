@@ -10,7 +10,7 @@ J_EXPR_START: '{{' -> pushMode(EXPRESSION_MODE);
 J_STMNT_START: '{%' -> pushMode(J_STMNT_MODE);
 J_COMMENT: '{#' (~[#])* '#}' -> skip;
 
-DOCTYPE: '<!DOCTYPE html>' -> skip;
+DOCTYPE: '<!' [dD][oO][cC][tT][yY][pP][eE] ~[>]* '>';
 HTML_COMMENT: '<!--' .*? '-->' -> skip;
 CLOSE_TAG_START: '</' -> pushMode(END_TAG_MODE);
 START_TAG_OPEN: '<' -> pushMode(START_TAG_MODE);

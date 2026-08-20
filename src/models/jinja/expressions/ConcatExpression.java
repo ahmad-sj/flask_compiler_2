@@ -5,7 +5,7 @@ import models.Node;
 import java.util.ArrayList;
 
 public class ConcatExpression extends Expression {
-    ArrayList<Node> exprList;
+    public ArrayList<Node> exprList;
 
     public ConcatExpression(ArrayList<Node> exprList) {
         this.exprList = exprList;

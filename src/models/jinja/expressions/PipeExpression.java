@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class PipeExpression extends Expression {
     public Node expr;
-    ArrayList<Node> filterList;
+    public ArrayList<Node> filterList;
 
     public PipeExpression(Node expr, ArrayList<Node> filterList) {
         this.expr = expr;

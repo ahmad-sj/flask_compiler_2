@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class AndExpression extends Expression {
 
-    ArrayList<Node> exprList;
+    public ArrayList<Node> exprList;
 
     public AndExpression(ArrayList<Node> exprList) {
         this.exprList = exprList;

@@ -5,7 +5,7 @@ import models.Node;
 import java.util.ArrayList;
 
 public class Dict extends Node {
-    ArrayList<Node> itemList;
+    public ArrayList<Node> itemList;
 
     public Dict(ArrayList<Node> itemList) {
         this.itemList = itemList;

@@ -5,7 +5,7 @@ import models.Node;
 import java.util.ArrayList;
 
 public class StyleAttribute extends Attribute {
-    ArrayList<Node> propList;
+    public ArrayList<Node> propList;
 
     public StyleAttribute(String name, ArrayList<Node> propList) {
         this.attrName = name;

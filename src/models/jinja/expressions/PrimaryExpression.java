@@ -5,8 +5,8 @@ import models.Node;
 import java.util.ArrayList;
 
 public class PrimaryExpression extends Expression {
-    Node atom;
-    ArrayList<Node> trailerList;
+    public Node atom;
+    public ArrayList<Node> trailerList;
 
     public PrimaryExpression(Node atom, ArrayList<Node> trailerList) {
         this.atom = atom;

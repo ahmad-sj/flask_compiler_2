@@ -5,8 +5,8 @@ import org.antlr.v4.runtime.Token;
 
 public class SetStatement extends JinjaBlock {
 
-    Node id;
-    Node expr;
+    public Node id;
+    public Node expr;
 
     public SetStatement(Node id, Node expr) {
         this.id = id;

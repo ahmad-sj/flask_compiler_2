@@ -966,7 +966,13 @@ public class NodeVisitor extends templateParserBaseVisitor<Node> {
                 exprList.add(this.visit(ctx.mulExpr().get(i)));
             }
 
-            AddExpression addExpression = new AddExpression(exprList);
+            // Keep the operators: without them '-' was indistinguishable from '+'.
+            ArrayList<Node> operatorList = new ArrayList<>();
+            for (int i = 0; i < ctx.addExprOptor().size(); i++) {
+                operatorList.add(this.visit(ctx.addExprOptor().get(i)));
+            }
+
+            AddExpression addExpression = new AddExpression(exprList, operatorList);
             addExpression.setNodeName("add expr");
             addExpression.setLineNumber(ctx.getStart().getLine());
 
@@ -1006,7 +1012,13 @@ public class NodeVisitor extends templateParserBaseVisitor<Node> {
                 exprList.add(this.visit(ctx.unaryExpr().get(i)));
             }
 
-            MulExpression mulExpression = new MulExpression(exprList);
+            // Keep the operators: without them '/' and '%' collapsed into '*'.
+            ArrayList<Node> operatorList = new ArrayList<>();
+            for (int i = 0; i < ctx.mulExprOptor().size(); i++) {
+                operatorList.add(this.visit(ctx.mulExprOptor().get(i)));
+            }
+
+            MulExpression mulExpression = new MulExpression(exprList, operatorList);
             mulExpression.setNodeName("mul expr");
             mulExpression.setLineNumber(ctx.getStart().getLine());
 

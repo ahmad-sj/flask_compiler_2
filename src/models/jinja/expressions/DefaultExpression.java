@@ -3,8 +3,8 @@ package models.jinja.expressions;
 import models.Node;
 
 public class DefaultExpression extends Expression {
-    Node expr;
-    Node defaultExpr;
+    public Node expr;
+    public Node defaultExpr;
 
     public DefaultExpression(Node expr, Node defaultExpr) {
         this.expr = expr;

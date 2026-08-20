@@ -5,7 +5,7 @@ import models.Node;
 import java.util.ArrayList;
 
 public class OrExpression extends Expression {
-    ArrayList<Node> exprList;
+    public ArrayList<Node> exprList;
 
     public OrExpression(ArrayList<Node> exprList) {
         this.exprList = exprList;

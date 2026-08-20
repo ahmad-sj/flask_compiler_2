@@ -4,7 +4,7 @@ import models.Node;
 
 public class InheritedBlock extends JinjaBlock {
     public String blockName;
-    Node nodeBody; // object of type NodeBody
+    public Node nodeBody; // object of type NodeBody
 
     public InheritedBlock(String blockName, Node nodeBody) {
         this.blockName = blockName;

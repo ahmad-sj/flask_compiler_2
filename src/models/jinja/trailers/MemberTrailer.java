@@ -3,7 +3,7 @@ package models.jinja.trailers;
 import models.Node;
 
 public class MemberTrailer extends Trailer {
-    Node id;
+    public Node id;
 
     public MemberTrailer(Node id) {
         this.id = id;

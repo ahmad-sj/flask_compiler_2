@@ -4,11 +4,28 @@ import models.Node;
 
 import java.util.ArrayList;
 
+/**
+ * A chain of multiplicative operands: {@code a * b / c % d}.
+ *
+ * operatorList holds the operator joining each pair, so operatorList.get(i)
+ * sits between exprList.get(i) and exprList.get(i + 1). It used to be dropped,
+ * which made every division and modulo print and evaluate as multiplication.
+ */
 public class MulExpression extends Expression {
-    ArrayList<Node> exprList;
 
-    public MulExpression(ArrayList<Node> exprList) {
+    public ArrayList<Node> exprList;
+    public ArrayList<Node> operatorList;
+
+    public MulExpression(ArrayList<Node> exprList, ArrayList<Node> operatorList) {
         this.exprList = exprList;
+        this.operatorList = operatorList;
+    }
+
+    /** Returns the operator joining operand i and i + 1, defaulting to "*". */
+    public String operatorAt(int i) {
+        if (operatorList == null || i >= operatorList.size()) return "*";
+        Node op = operatorList.get(i);
+        return op instanceof Operator ? ((Operator) op).operator : op.toString();
     }
 
     @Override
@@ -19,7 +36,7 @@ public class MulExpression extends Expression {
             mulExpr.append(exprList.get(i));
 
             if (i + 1 < exprList.size())
-                mulExpr.append(" * ");
+                mulExpr.append(" ").append(operatorAt(i)).append(" ");
         }
         return mulExpr.toString();
     }
@@ -28,22 +45,15 @@ public class MulExpression extends Expression {
     public String print(int level) {
         String indent = getIndent(level);
 
-        StringBuilder mulExpr = new StringBuilder();
+        StringBuilder sb = new StringBuilder("mul expr\n");
+        sb.append(indent).append("├─ line no: ").append(lineNumber).append("\n");
 
         for (int i = 0; i < exprList.size(); i++) {
-            if (i + 1 < exprList.size()) {
-                mulExpr.append(indent).append("├─ expr").append(i).append(": ");
-                mulExpr.append(exprList.get(i).print(level + 2));
-                mulExpr.append(indent).append("├─ optor: *\n");
-            } else {
-                mulExpr.append(indent).append("└─ expr").append(i).append(": ");
-                mulExpr.append(exprList.get(i).print(level + 2));
-            }
+            boolean last = i + 1 == exprList.size();
+            sb.append(indent).append(last ? "└─ " : "├─ ")
+              .append(last ? "operand: " : "operand (" + operatorAt(i) + " follows): ")
+              .append(exprList.get(i).print(level + 2));
         }
-
-        return "mul expr\n"
-                + indent + "├─ line no: " + lineNumber + "\n"
-                + mulExpr
-                ;
+        return sb.toString();
     }
 }

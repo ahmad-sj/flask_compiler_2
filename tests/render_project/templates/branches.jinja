@@ -1,0 +1,17 @@
+<h1>{{ label }}</h1>
+<div>
+{% if stock > 10 %}
+<p>plenty</p>
+{% elif stock > 0 %}
+<p>low</p>
+{% else %}
+<p>out of stock</p>
+{% endif %}
+</div>
+<ul>
+{% for item in items %}
+<li>{{ item }}</li>
+{% else %}
+<li>nothing here</li>
+{% endfor %}
+</ul>

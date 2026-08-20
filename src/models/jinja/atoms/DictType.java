@@ -5,7 +5,7 @@ import models.Node;
 import java.util.ArrayList;
 
 public class DictType extends Atom {
-    ArrayList<Node> pairsList;
+    public ArrayList<Node> pairsList;
 
     public DictType(ArrayList<Node> pairList) {
         this.pairsList = pairList;

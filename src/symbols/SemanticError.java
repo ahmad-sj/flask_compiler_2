@@ -24,6 +24,6 @@ public class SemanticError {
 
     @Override
     public String toString() {
-        return "[" + errorType + "] line " + line + " | '" + symbolName + "' — " + message;
+        return "[" + errorType + "] line " + line + " | '" + symbolName + "' - " + message;
     }
 }

@@ -3,7 +3,7 @@ package models.jinja.blocks;
 import models.Node;
 
 public class ElseBlock extends JinjaBlock {
-    Node nodeBody; // object of type NodeBody
+    public Node nodeBody; // object of type NodeBody
 
     public ElseBlock(Node nodeBody) {
         this.nodeBody = nodeBody;

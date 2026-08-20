@@ -5,7 +5,7 @@ options {tokenVocab=templateLexer;}
 @header{ package antlr; }
 
 template
-    : extendsBlock? (htmlElement | jinjaElement*) EOF
+    : DOCTYPE? extendsBlock? (htmlElement | jinjaElement)* EOF
     ;
 
 jinjaElement

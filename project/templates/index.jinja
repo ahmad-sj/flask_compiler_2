@@ -1,0 +1,29 @@
+{% extends "base.jinja" %}
+
+{% block title %} All Products {% endblock %}
+
+{% block content %}
+<h2>All Products</h2>
+
+<div class="card-grid">
+
+    {% for product in products %}
+    <div class="card">
+        <img src="{{ product.image }}" alt="{{ product.name }}" />
+        <div class="card-body">
+            <h3 class="card-title">{{ product.name }}</h3>
+            <p class="price">${{ "%.2f"|format(product.price) }}</p>
+            <a href="{{ url_for('detail', product_id=product.id) }}" class="btn"> View Details </a>
+        </div>
+    </div>
+
+    {% else %}
+    <p>
+        No products yet.
+        <a href="{{ url_for('add') }}">Add the first one!</a>
+    </p>
+
+    {% endfor %}
+
+</div>
+{% endblock %}

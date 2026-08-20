@@ -3,9 +3,9 @@ package models.jinja.expressions;
 import models.Node;
 
 public class TernaryExpression extends Expression {
-    Node condExpr;
-    Node trueExpr;
-    Node falseExpr;
+    public Node condExpr;
+    public Node trueExpr;
+    public Node falseExpr;
 
     public TernaryExpression(Node condExpr, Node trueExpr, Node falseExpr) {
         this.condExpr = condExpr;

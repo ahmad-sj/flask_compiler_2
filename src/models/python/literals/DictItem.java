@@ -3,8 +3,8 @@ package models.python.literals;
 import models.Node;
 
 public class DictItem extends Node {
-    Node literal;
-    Node expr;
+    public Node literal;
+    public Node expr;
 
     public DictItem(Node literal, Node expr) {
         this.literal = literal;

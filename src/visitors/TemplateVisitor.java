@@ -5,6 +5,7 @@ import antlr.templateParserBaseVisitor;
 import models.Node;
 import symbols.SymbolTable;
 import models.Template;
+import models.DocType;
 
 public class TemplateVisitor extends templateParserBaseVisitor<Template> {
 
@@ -27,9 +28,21 @@ public class TemplateVisitor extends templateParserBaseVisitor<Template> {
 
         NodeVisitor nodeVisitor = new NodeVisitor(symbolTable);
 
+        // The doctype is a terminal rather than a rule, so it is turned into a
+        // node here instead of being dispatched through the node visitor.
+        if (ctx.DOCTYPE() != null) {
+            DocType docType = new DocType(ctx.DOCTYPE().getText());
+            docType.setNodeName("doctype");
+            docType.setLineNumber(ctx.DOCTYPE().getSymbol().getLine());
+            template.addNode(docType);
+        }
+
         for (int i = 0; i < ctx.getChildCount() - 1; i++) {
+            // Skip the doctype terminal already handled above.
+            if (ctx.DOCTYPE() != null && ctx.getChild(i) == ctx.DOCTYPE()) continue;
+
             Node child = nodeVisitor.visit(ctx.getChild(i));
-            template.addNode(child);
+            if (child != null) template.addNode(child);
         }
 
         symbolTable.exitScope();

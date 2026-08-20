@@ -3,7 +3,7 @@ package models.jinja.expressions;
 import models.Node;
 
 public class NotExpression extends Expression {
-    Node expression;
+    public Node expression;
 
     public NotExpression(Node expression) {
         this.expression = expression;

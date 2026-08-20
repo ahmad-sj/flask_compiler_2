@@ -2,18 +2,26 @@ package visitors;
 
 import models.App;
 import models.Node;
+import models.RouteInfo;
+import models.jinja.atoms.FloatType;
 import models.jinja.atoms.IdType;
 import models.jinja.atoms.IntType;
+import models.jinja.atoms.ListType;
 import models.jinja.atoms.StringType;
 import models.jinja.expressions.Argument;
 import models.jinja.expressions.ArgumentList;
 import models.jinja.trailers.CallTrailer;
+import models.jinja.trailers.MemberTrailer;
+import models.jinja.trailers.SubTrailer;
 import models.python.BlockNode;
 import models.python.Decorator;
 import models.python.Func;
 import models.python.Name;
 import models.python.Value;
+import models.python.expressions.EqualExpression;
+import models.python.expressions.GenExpression;
 import models.python.literals.Dict;
+import models.python.literals.DictItem;
 import models.python.literals.FalseValue;
 import models.python.literals.NoneValue;
 import models.python.literals.TrueValue;
@@ -21,331 +29,349 @@ import models.python.simple_statements.AssignLine;
 import models.python.simple_statements.ReturnLine;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+/**
+ * Extracts the data-preparation results from the Python AST: module-level
+ * values, and one RouteInfo per @app.route function.
+ *
+ * This is the "generator" stage of the pipeline. It works purely on the AST and
+ * deliberately does not consult the symbol table, which belongs to semantic
+ * analysis.
+ *
+ * Two things changed from the earlier version. Dict literals are now walked as
+ * AST nodes instead of being printed with toString() and re-parsed by splitting
+ * on ", " (which corrupted any string value containing a comma). And routes are
+ * described generically instead of the generator hardcoding the names
+ * "product", "products" and "product_id".
+ */
 public class PythonDataExtractor {
 
-    private Map<String, Object> moduleVars;
-    private Map<String, Map<String, Object>> routeContexts;
-    private Map<String, String> routeTemplates;
-    private Map<String, String> urlForRoutes;
+    /** Matches a Flask URL parameter such as &lt;int:product_id&gt; or &lt;name&gt;. */
+    private static final Pattern URL_PARAM = Pattern.compile("<(?:[^:>]+:)?([^>]+)>");
 
-    public PythonDataExtractor() {
-        moduleVars = new HashMap<>();
-        routeContexts = new HashMap<>();
-        routeTemplates = new HashMap<>();
-        urlForRoutes = new HashMap<>();
-    }
+    private final Map<String, Object> moduleVars = new LinkedHashMap<>();
+    private final List<RouteInfo> routes = new ArrayList<>();
 
     public void extract(App app) {
+        // Module-level assignments first, so routes can resolve names against them.
         for (Node node : app.nodes) {
-            extractNode(node);
-        }
-    }
-
-    private void extractNode(Node node) {
-        if (node instanceof AssignLine) {
-            AssignLine assign = (AssignLine) node;
-            if (assign.target instanceof IdType) {
-                extractAssignLine(assign);
-            }
-        } else if (node instanceof Func) {
-            extractFunc((Func) node);
-        }
-    }
-
-    private void extractAssignLine(AssignLine assign) {
-        String name = ((IdType) assign.target).name;
-        Object value = convertNodeToObject(assign.expr);
-        moduleVars.put(name, value);
-    }
-
-    private void extractFunc(Func func) {
-        String funcName = null;
-        if (func.funcName instanceof IdType) {
-            funcName = ((IdType) func.funcName).name;
-        }
-
-        // Check if it has a route decorator
-        if (func.decorator instanceof Decorator) {
-            Decorator dec = (Decorator) func.decorator;
-            if (isRouteDecorator(dec) && funcName != null) {
-                String url = extractRouteUrl(dec);
-                if (url != null) {
-                    urlForRoutes.put(funcName, funcName);
-                }
+            if (node instanceof AssignLine) {
+                AssignLine assign = (AssignLine) node;
+                String name = nameOf(assign.target);
+                if (name != null) moduleVars.put(name, toJavaValue(assign.expr));
             }
         }
-
-        // Scan function body for render_template calls
-        if (func.funcBlock instanceof BlockNode) {
-            BlockNode block = (BlockNode) func.funcBlock;
-            for (Node stmt : block.statements) {
-                if (stmt instanceof ReturnLine) {
-                    ReturnLine ret = (ReturnLine) stmt;
-                    if (ret.returnExpr instanceof Value) {
-                        Value val = (Value) ret.returnExpr;
-                        Node base = val.baseValue;
-                        String baseName = null;
-                        if (base instanceof IdType) {
-                            baseName = ((IdType) base).name;
-                        } else if (base instanceof Name) {
-                            baseName = ((IdType) ((Name) base).id).name;
-                        }
-                        if ("render_template".equals(baseName)) {
-                            extractRenderTemplate(funcName, val);
-                        }
-                    }
-                }
-            }
+        for (Node node : app.nodes) {
+            if (node instanceof Func) extractRoute((Func) node);
         }
-    }
-
-    private boolean isRouteDecorator(Decorator dec) {
-        if (dec.name == null || !(dec.name instanceof Name)) return false;
-        Name name = (Name) dec.name;
-        if (!(name.id instanceof IdType)) return false;
-        String baseName = ((IdType) name.id).name;
-        if (!"app".equals(baseName)) return false;
-        if (name.trailerList == null || name.trailerList.isEmpty()) return false;
-        Node firstTrailer = name.trailerList.get(0);
-        if (!(firstTrailer instanceof models.jinja.trailers.MemberTrailer)) return false;
-        String attr = firstTrailer.toString();
-        return attr.startsWith(".") && attr.length() > 1 && "route".equals(attr.substring(1));
-    }
-
-    private String extractRouteUrl(Decorator dec) {
-        if (dec.callArgs == null || dec.callArgs.isEmpty()) return null;
-        Node firstArg = dec.callArgs.get(0);
-        if (!(firstArg instanceof Argument)) return null;
-        Argument arg = (Argument) firstArg;
-        if (arg.expr == null) return null;
-        Node expr = arg.expr;
-        String raw = null;
-        if (expr instanceof StringType) {
-            raw = ((StringType) expr).value;
-        } else if (expr instanceof Value) {
-            Node base = ((Value) expr).baseValue;
-            if (base instanceof StringType) {
-                raw = ((StringType) base).value;
-            }
-        }
-        if (raw == null) return null;
-        if (raw.length() >= 2 && ((raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith("\"") && raw.endsWith("\"")))) {
-            raw = raw.substring(1, raw.length() - 1);
-        }
-        return raw;
-    }
-
-    private void extractRenderTemplate(String routeName, Value value) {
-        if (value.trailerList == null) return;
-        for (Node trailer : value.trailerList) {
-            if (trailer instanceof CallTrailer) {
-                CallTrailer ct = (CallTrailer) trailer;
-                if (ct.argList instanceof ArgumentList) {
-                    ArgumentList al = (ArgumentList) ct.argList;
-                    String templateFile = null;
-                    Map<String, Object> context = new HashMap<>();
-                    for (int i = 0; i < al.argList.size(); i++) {
-                        Argument arg = (Argument) al.argList.get(i);
-                        if (arg.argName == null) {
-                            // Positional argument - template filename
-                            templateFile = extractStringValue(arg.expr);
-                        } else {
-                            // Keyword argument - context variable
-                            String argName = extractStringValue(arg.argName);
-                            Object argValue = resolveArgValue(arg.expr);
-                            context.put(argName, argValue);
-                        }
-                    }
-                    if (templateFile != null && routeName != null) {
-                        routeContexts.put(routeName, context);
-                        routeTemplates.put(routeName, templateFile);
-                    }
-                }
-            }
-        }
-    }
-
-    private String extractStringValue(Node node) {
-        if (node instanceof Value) {
-            return extractStringValue(((Value) node).baseValue);
-        }
-        if (node instanceof StringType) {
-            String val = ((StringType) node).value;
-            if (val.length() >= 2 && ((val.startsWith("'") && val.endsWith("'")) || (val.startsWith("\"") && val.endsWith("\"")))) {
-                return val.substring(1, val.length() - 1);
-            }
-            return val;
-        }
-        if (node instanceof IdType) {
-            return ((IdType) node).name;
-        }
-        return node.toString();
-    }
-
-    private Object resolveArgValue(Node expr) {
-        if (expr instanceof IdType) {
-            String name = ((IdType) expr).name;
-            return moduleVars.get(name);
-        }
-        if (expr instanceof Name) {
-            String name = ((IdType) ((Name) expr).id).name;
-            return moduleVars.get(name);
-        }
-        if (expr instanceof Value) {
-            return resolveArgValue(((Value) expr).baseValue);
-        }
-        return convertNodeToObject(expr);
-    }
-
-    private Object convertNodeToObject(Node node) {
-        if (node instanceof IntType) {
-            return ((IntType) node).value;
-        }
-        if (node instanceof models.jinja.atoms.FloatType) {
-            return ((models.jinja.atoms.FloatType) node).value;
-        }
-        if (node instanceof StringType) {
-            String val = ((StringType) node).value;
-            if (val.length() >= 2 && ((val.startsWith("'") && val.endsWith("'")) || (val.startsWith("\"") && val.endsWith("\"")))) {
-                return val.substring(1, val.length() - 1);
-            }
-            return val;
-        }
-        if (node instanceof TrueValue) {
-            return Boolean.TRUE;
-        }
-        if (node instanceof FalseValue) {
-            return Boolean.FALSE;
-        }
-        if (node instanceof NoneValue) {
-            return null;
-        }
-        if (node instanceof models.jinja.atoms.ListType) {
-            models.jinja.atoms.ListType list = (models.jinja.atoms.ListType) node;
-            List<Object> result = new ArrayList<>();
-            if (list.itemList != null) {
-                for (Node item : list.itemList) {
-                    result.add(convertNodeToObject(item));
-                }
-            }
-            return result;
-        }
-        if (node instanceof Dict) {
-            return parseDictString(node.toString());
-        }
-        if (node instanceof Value) {
-            return convertNodeToObject(((Value) node).baseValue);
-        }
-        if (node instanceof Name) {
-            return convertNodeToObject(((Name) node).id);
-        }
-        if (node instanceof IdType) {
-            return moduleVars.get(((IdType) node).name);
-        }
-        return node.toString();
-    }
-
-    private List<Object> parseListString(String s) {
-        s = s.substring(1, s.length() - 1).trim(); // Remove [ and ]
-        List<Object> result = new ArrayList<>();
-        if (s.isEmpty()) return result;
-        int i = 0;
-        while (i < s.length()) {
-            while (i < s.length() && Character.isWhitespace(s.charAt(i))) i++;
-            if (i >= s.length()) break;
-            if (s.charAt(i) == '{') {
-                int end = findMatchingBrace(s, i);
-                if (end > 0) {
-                    result.add(parseDictString(s.substring(i, end + 1)));
-                    i = end + 1;
-                } else {
-                    break;
-                }
-            } else {
-                int end = s.indexOf(", ", i);
-                if (end < 0) end = s.length();
-                String itemStr = s.substring(i, end).trim();
-                result.add(evaluateValueString(itemStr));
-                i = end;
-            }
-        }
-        return result;
-    }
-
-    private Map<String, Object> parseDictString(String s) {
-        s = s.substring(1, s.length() - 1).trim(); // Remove { and }
-        Map<String, Object> result = new HashMap<>();
-        if (s.isEmpty()) return result;
-        List<String> items = new ArrayList<>();
-        int i = 0;
-        int start = 0;
-        while (i < s.length()) {
-            if (s.charAt(i) == ',' && i + 1 < s.length() && s.charAt(i + 1) == ' ') {
-                items.add(s.substring(start, i));
-                start = i + 2;
-            }
-            i++;
-        }
-        if (start < s.length()) {
-            items.add(s.substring(start));
-        }
-        for (String item : items) {
-            int idx = item.indexOf(" : ");
-            if (idx > 0) {
-                String key = item.substring(0, idx).trim();
-                String valueStr = item.substring(idx + 3).trim();
-                if (key.length() >= 2 && ((key.startsWith("'") && key.endsWith("'")) || (key.startsWith("\"") && key.endsWith("\"")))) {
-                    key = key.substring(1, key.length() - 1);
-                }
-                result.put(key, evaluateValueString(valueStr));
-            }
-        }
-        return result;
-    }
-
-    private int findMatchingBrace(String s, int start) {
-        int depth = 1;
-        for (int i = start + 1; i < s.length(); i++) {
-            if (s.charAt(i) == '{') depth++;
-            else if (s.charAt(i) == '}') {
-                depth--;
-                if (depth == 0) return i;
-            }
-        }
-        return -1;
-    }
-
-    private Object evaluateValueString(String s) {
-        s = s.trim();
-        if (s.isEmpty()) return "";
-        if (s.matches("\\d+")) return Integer.valueOf(s);
-        if (s.matches("\\d+\\.\\d+")) return Double.valueOf(s);
-        if (s.equals("True")) return Boolean.TRUE;
-        if (s.equals("False")) return Boolean.FALSE;
-        if (s.equals("None")) return null;
-        if (s.length() >= 2 && ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith("\"") && s.endsWith("\"")))) {
-            s = s.substring(1, s.length() - 1);
-        }
-        return s;
     }
 
     public Map<String, Object> getModuleVars() {
         return moduleVars;
     }
 
-    public Map<String, Map<String, Object>> getRouteContexts() {
-        return routeContexts;
+    public List<RouteInfo> getRoutes() {
+        return routes;
     }
 
-    public Map<String, String> getRouteTemplates() {
-        return routeTemplates;
+    // ═══════════════════════════════════════════════════════════════════════
+    //  ROUTES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private void extractRoute(Func func) {
+        if (!(func.decorator instanceof Decorator)) return;
+        Decorator decorator = (Decorator) func.decorator;
+        if (!isRouteDecorator(decorator)) return;
+
+        RouteInfo route = new RouteInfo();
+        route.name = nameOf(func.funcName);
+        route.line = func.getLineNumber();
+        route.urlPattern = firstStringArg(decorator);
+
+        if (route.name == null) return;
+
+        if (route.urlPattern != null) {
+            Matcher m = URL_PARAM.matcher(route.urlPattern);
+            while (m.find()) route.params.add(m.group(1));
+        }
+
+        List<Node> body = statementsOf(func.funcBlock);
+        findRenderTemplate(route, body);
+        if (route.isParameterized()) findItemSelection(route, body);
+
+        routes.add(route);
     }
 
-    public Map<String, String> getUrlForRoutes() {
-        return urlForRoutes;
+    private boolean isRouteDecorator(Decorator decorator) {
+        if (!(decorator.name instanceof Name)) return false;
+        Name name = (Name) decorator.name;
+        if (!"app".equals(nameOf(name.id))) return false;
+        if (name.trailerList == null || name.trailerList.isEmpty()) return false;
+        Node first = name.trailerList.get(0);
+        if (!(first instanceof MemberTrailer)) return false;
+        return "route".equals(memberName((MemberTrailer) first));
+    }
+
+    private String firstStringArg(Decorator decorator) {
+        if (decorator.callArgs == null || decorator.callArgs.isEmpty()) return null;
+        Node first = decorator.callArgs.get(0);
+        if (!(first instanceof Argument)) return null;
+        Object value = toJavaValue(((Argument) first).expr);
+        return value == null ? null : String.valueOf(value);
+    }
+
+    /** Finds the return render_template(...) call and records template + context. */
+    private void findRenderTemplate(RouteInfo route, List<Node> body) {
+        for (Node stmt : body) {
+            if (!(stmt instanceof ReturnLine)) continue;
+            Node expr = ((ReturnLine) stmt).returnExpr;
+            if (!(expr instanceof Value)) continue;
+
+            Value value = (Value) expr;
+            if (!"render_template".equals(baseName(value))) continue;
+
+            CallTrailer call = firstCallTrailer(value.trailerList);
+            if (call == null) continue;
+
+            for (Node argNode : argumentsOf(call)) {
+                Argument arg = (Argument) argNode;
+                if (arg.argName == null) {
+                    Object name = toJavaValue(arg.expr);
+                    if (name != null) route.templateName = String.valueOf(name);
+                } else {
+                    route.context.put(nameOf(arg.argName), toJavaValue(arg.expr));
+                }
+            }
+            return;
+        }
+    }
+
+    /**
+     * Works out what a parameterized route enumerates, from code shaped like:
+     *
+     *   product = next((p for p in products if p["id"] == product_id), None)
+     *
+     * which yields collection "products", item variable "product" and key "id".
+     * Nothing here is specific to products; it reads the generator expression.
+     */
+    private void findItemSelection(RouteInfo route, List<Node> body) {
+        for (Node stmt : body) {
+            if (!(stmt instanceof AssignLine)) continue;
+            AssignLine assign = (AssignLine) stmt;
+
+            GenExpression gen = findGenExpression(assign.expr, 0);
+            if (gen == null) continue;
+
+            String collection = nameOf(unwrap(gen.inExpr));
+            if (collection == null || !(moduleVars.get(collection) instanceof List)) continue;
+
+            route.collectionName = collection;
+            route.itemVarName = nameOf(assign.target);
+            route.itemKeyName = matchedKey(gen.ifExpr, route.params);
+            if (route.itemKeyName != null) return;
+        }
+    }
+
+    /** Depth-limited search for a generator expression anywhere in a value. */
+    private GenExpression findGenExpression(Node node, int depth) {
+        if (node == null || depth > 6) return null;
+        if (node instanceof GenExpression) return (GenExpression) node;
+
+        if (node instanceof Value) {
+            Value value = (Value) node;
+            GenExpression found = findGenExpression(value.baseValue, depth + 1);
+            if (found != null) return found;
+            if (value.trailerList != null) {
+                for (Node trailer : value.trailerList) {
+                    if (trailer instanceof CallTrailer) {
+                        for (Node arg : argumentsOf((CallTrailer) trailer)) {
+                            found = findGenExpression(((Argument) arg).expr, depth + 1);
+                            if (found != null) return found;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * From a filter like {@code p["id"] == product_id}, returns "id" when the
+     * other side of the comparison is one of the route's URL parameters.
+     */
+    private String matchedKey(Node ifExpr, List<String> params) {
+        if (!(ifExpr instanceof EqualExpression)) return null;
+        EqualExpression equality = (EqualExpression) ifExpr;
+        List<Node> operands = equality.getExprList();
+        if (operands.size() < 2) return null;
+
+        String key = null;
+        boolean matchesParam = false;
+        for (Node operand : operands) {
+            String subscript = subscriptKey(operand);
+            if (subscript != null) key = subscript;
+            String plain = nameOf(unwrap(operand));
+            if (plain != null && params.contains(plain)) matchesParam = true;
+        }
+        return matchesParam ? key : null;
+    }
+
+    /** Returns the literal key of an expression like {@code p["id"]}. */
+    private String subscriptKey(Node node) {
+        Node unwrapped = node instanceof Value ? node : null;
+        if (unwrapped == null) return null;
+        Value value = (Value) unwrapped;
+        if (value.trailerList == null) return null;
+        for (Node trailer : value.trailerList) {
+            if (trailer instanceof SubTrailer) {
+                Object key = toJavaValue(((SubTrailer) trailer).expr);
+                if (key != null) return String.valueOf(key);
+            }
+        }
+        return null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  AST  ->  JAVA VALUES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Converts a literal AST node into a plain Java value.
+     * Returns null for anything not statically knowable, which the generator
+     * treats as "not available at build time".
+     */
+    private Object toJavaValue(Node node) {
+        if (node == null) return null;
+
+        if (node instanceof StringType) return stripQuotes(((StringType) node).value);
+        if (node instanceof IntType)    return ((IntType) node).value;
+        if (node instanceof FloatType)  return ((FloatType) node).value;
+        if (node instanceof TrueValue)  return Boolean.TRUE;
+        if (node instanceof FalseValue) return Boolean.FALSE;
+        if (node instanceof NoneValue)  return null;
+
+        if (node instanceof ListType) {
+            List<Object> out = new ArrayList<>();
+            ListType list = (ListType) node;
+            if (list.itemList != null) {
+                for (Node item : list.itemList) out.add(toJavaValue(item));
+            }
+            return out;
+        }
+
+        // Walk dict entries directly rather than printing and re-parsing them.
+        if (node instanceof Dict) {
+            Map<String, Object> out = new LinkedHashMap<>();
+            Dict dict = (Dict) node;
+            if (dict.itemList != null) {
+                for (Node item : dict.itemList) {
+                    if (!(item instanceof DictItem)) continue;
+                    DictItem entry = (DictItem) item;
+                    Object key = toJavaValue(entry.literal);
+                    if (key != null) out.put(String.valueOf(key), toJavaValue(entry.expr));
+                }
+            }
+            return out;
+        }
+
+        if (node instanceof IdType) {
+            String name = ((IdType) node).name;
+            return moduleVars.containsKey(name) ? moduleVars.get(name) : null;
+        }
+
+        if (node instanceof Name) {
+            Name name = (Name) node;
+            if (name.trailerList == null || name.trailerList.isEmpty()) {
+                return toJavaValue(name.id);
+            }
+            return null;
+        }
+
+        if (node instanceof Value) {
+            Value value = (Value) node;
+            if (value.trailerList == null || value.trailerList.isEmpty()) {
+                return toJavaValue(value.baseValue);
+            }
+            return null; // A call or member access is not a static literal.
+        }
+
+        return null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  SMALL HELPERS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private List<Node> statementsOf(Node block) {
+        if (block instanceof BlockNode && ((BlockNode) block).statements != null) {
+            return ((BlockNode) block).statements;
+        }
+        return new ArrayList<>();
+    }
+
+    private List<Node> argumentsOf(CallTrailer call) {
+        List<Node> out = new ArrayList<>();
+        if (call.argList instanceof ArgumentList) {
+            ArgumentList list = (ArgumentList) call.argList;
+            if (list.argList != null) {
+                for (Node n : list.argList) if (n instanceof Argument) out.add(n);
+            }
+        }
+        return out;
+    }
+
+    private CallTrailer firstCallTrailer(List<Node> trailers) {
+        if (trailers == null) return null;
+        for (Node trailer : trailers) {
+            if (trailer instanceof CallTrailer) return (CallTrailer) trailer;
+        }
+        return null;
+    }
+
+    private String baseName(Value value) {
+        return nameOf(value.baseValue);
+    }
+
+    /** Unwraps a Value/Name shell to reach the identifier underneath. */
+    private Node unwrap(Node node) {
+        if (node instanceof Value) {
+            Value value = (Value) node;
+            if (value.trailerList == null || value.trailerList.isEmpty()) {
+                return unwrap(value.baseValue);
+            }
+        }
+        if (node instanceof Name) {
+            Name name = (Name) node;
+            if (name.trailerList == null || name.trailerList.isEmpty()) return unwrap(name.id);
+        }
+        return node;
+    }
+
+    private String nameOf(Node node) {
+        if (node == null) return null;
+        if (node instanceof IdType) return ((IdType) node).name;
+        if (node instanceof Name)   return nameOf(((Name) node).id);
+        if (node instanceof Value)  return nameOf(((Value) node).baseValue);
+        return null;
+    }
+
+    private String memberName(MemberTrailer trailer) {
+        if (trailer.id instanceof IdType) return ((IdType) trailer.id).name;
+        String text = trailer.toString();
+        return text.startsWith(".") ? text.substring(1) : text;
+    }
+
+    private static String stripQuotes(String s) {
+        if (s == null) return null;
+        if (s.length() >= 2
+                && ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith("\"") && s.endsWith("\"")))) {
+            return s.substring(1, s.length() - 1);
+        }
+        return s;
     }
 }

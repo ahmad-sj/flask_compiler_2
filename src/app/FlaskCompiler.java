@@ -151,9 +151,9 @@ public class FlaskCompiler {
         // Print during execution, as the project requires. --quiet-ast skips the
         // console dump; the files above are always written.
         if (config.printTrees) {
-            System.out.print(pythonTree);
-            System.out.print(jinjaTree);
-            System.out.print(symbols);
+            System.out.print(TreePrinter.forConsole(pythonTree));
+            System.out.print(TreePrinter.forConsole(jinjaTree));
+            System.out.print(TreePrinter.forConsole(symbols));
         } else {
             log.info("Tree dump suppressed (--quiet-ast); see the .txt files above.");
         }

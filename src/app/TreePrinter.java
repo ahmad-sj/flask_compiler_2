@@ -5,6 +5,8 @@ import models.Node;
 import models.Template;
 import symbols.SymbolTable;
 
+import java.nio.charset.Charset;
+
 import java.util.Map;
 
 /**
@@ -82,6 +84,59 @@ public final class TreePrinter {
            .append("   Symbols: ").append(symbolTable.symbolCount())
            .append(nl());
         return out.toString();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  CONSOLE ENCODING
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * The print methods draw the tree with Unicode box characters. A Windows
+     * console running a legacy code page cannot encode those and shows "??"
+     * instead, which makes the whole dump unreadable.
+     *
+     * Files are always written as UTF-8; only console output is transliterated,
+     * and only when the console genuinely cannot represent the characters.
+     */
+    public static String forConsole(String text) {
+        return consoleHandlesBoxDrawing() ? text : toAscii(text);
+    }
+
+    private static boolean consoleHandlesBoxDrawing() {
+        try {
+            return consoleCharset().newEncoder().canEncode("├─└│");
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private static Charset consoleCharset() {
+        // stdout.encoding is what the JVM actually writes System.out with.
+        for (String property : new String[]{"stdout.encoding", "native.encoding", "file.encoding"}) {
+            String name = System.getProperty(property);
+            if (name == null) continue;
+            try {
+                return Charset.forName(name);
+            } catch (RuntimeException ignored) {
+                // Try the next one.
+            }
+        }
+        return Charset.defaultCharset();
+    }
+
+    private static String toAscii(String text) {
+        return text
+                .replace('├', '+')
+                .replace('└', '\\')
+                .replace('│', '|')
+                .replace('─', '-')
+                .replace('┌', '+')
+                .replace('┐', '+')
+                .replace('┘', '+')
+                .replace('┼', '+')
+                .replace('▶', '>')
+                .replace('—', '-')
+                .replace('•', '*');
     }
 
     private static void banner(StringBuilder out, String title) {

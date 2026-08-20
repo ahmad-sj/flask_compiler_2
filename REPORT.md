@@ -4,6 +4,8 @@ A compiler front-end for a combined **Python + Jinja2 + HTML + CSS** language,
 implemented in Java on ANTLR 4, plus a back-end that renders the parsed input to
 a working static site.
 
+> An Arabic version of this report is available in [REPORT.ar.md](REPORT.ar.md).
+
 | Part | Where |
 | --- | --- |
 | Grammar / lexer / parser | [grammars/](grammars/) → generated into [src/antlr/](src/antlr/) |
@@ -236,12 +238,18 @@ Sample:
 [1/10] #8 multi import line (line 2)
 ----------------------------------------------------------------
 multi import
-├─ line no: 2
-├─ from name: name
-``````├─ line no: 2
-``````└─ id: flask
-└─ imported names: Flask, render_template, request, redirect, url_for
++- line no: 2
++- from name: name
+``````+- line no: 2
+``````\- id: flask
+\- imported names: Flask, render_template, request, redirect, url_for
 ```
+
+> The print methods draw the tree with the Unicode box characters `├ └ ─`. When
+> the console runs a legacy code page that cannot encode them, they are
+> transliterated to their ASCII equivalents (`+ \ -`) as shown above, rather
+> than appearing as `??`. Files are always written as UTF-8 with the original
+> characters.
 
 ---
 

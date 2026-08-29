@@ -42,7 +42,7 @@ public class HtmlSelfClosingElement extends HtmlElement {
             }
         }
 
-        return "html self closing element: <" + tagName + "/>\n"
+        return header() + "\n"
                 + (attributes.isEmpty() ?
                 indent + "└─ line no: " + lineNumber + " \n" :
                 indent + "├─ line no: " + lineNumber + " \n" +

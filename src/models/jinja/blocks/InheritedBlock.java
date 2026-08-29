@@ -22,7 +22,7 @@ public class InheritedBlock extends JinjaBlock {
     public String print(int level) {
         String indent = getIndent(level + 1);
 
-        return "block" + "\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n" +
                 (nodeBody == null
                         ? indent + "└─ block name: " + blockName + "\n"

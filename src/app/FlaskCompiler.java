@@ -83,9 +83,11 @@ public class FlaskCompiler {
         // ── Dump every stage, even if later ones fail ─────────────────────
         // Order matters for the console: tokens, then parse tree, then AST.
         writeStageDumps(config, log, appHandler, templatesHandler);
-        writeAstDumps(config, log, app, templates, symbolTable);
+        writeAstDumps(config, log, app, templates);
 
         if (app == null) {
+            // No analysis table to show: the backend never got that far.
+            writeSymbolTables(config, log, null, symbolTable);
             writeSemanticReport(config, log, null, templatesHandler.getSyntaxErrors(),
                     new ArrayList<>());
             log.section("Result");
@@ -98,6 +100,10 @@ public class FlaskCompiler {
         SemanticAnalyzer analyzer = new SemanticAnalyzer();
         List<SemanticError> errors = analyzer.analyze(app);
         app.semanticErrors = errors;
+
+        // The symbol tables are dumped here rather than with the AST dumps
+        // above, because the Python one does not exist until analyze() has run.
+        writeSymbolTables(config, log, analyzer.getSymbolTable(), symbolTable);
 
         if (errors.isEmpty()) {
             log.info("No semantic errors found.");
@@ -156,8 +162,7 @@ public class FlaskCompiler {
     // ═══════════════════════════════════════════════════════════════════════
 
     private static void writeAstDumps(CompilerConfig config, BuildLog log,
-                                      App app, Map<String, Template> templates,
-                                      SymbolTable symbolTable) {
+                                      App app, Map<String, Template> templates) {
         log.section("Compiler output");
 
         // Machine-readable dumps.
@@ -169,20 +174,35 @@ public class FlaskCompiler {
         // Human-readable trees, produced by the per-node print methods.
         String pythonTree = TreePrinter.renderPythonAst(app, config.appFile().getFileName().toString());
         String jinjaTree = TreePrinter.renderTemplateAsts(templates);
-        String symbols = TreePrinter.renderSymbolTable(symbolTable);
 
         write(config.compilerOutputDir.resolve("ast_python.txt"), pythonTree, log);
         write(config.compilerOutputDir.resolve("ast_jinja.txt"), jinjaTree, log);
-        write(config.compilerOutputDir.resolve("symbol_table.txt"), symbols, log);
 
         // Print during execution, as the project requires. --quiet-ast skips the
         // console dump; the files above are always written.
         if (config.printTrees) {
             System.out.print(TreePrinter.forConsole(pythonTree));
             System.out.print(TreePrinter.forConsole(jinjaTree));
-            System.out.print(TreePrinter.forConsole(symbols));
         } else {
             log.info("Tree dump suppressed (--quiet-ast); see the .txt files above.");
+        }
+    }
+
+    /**
+     * Writes symbol_table.txt, containing both tables.
+     *
+     * Called after semantic analysis, since the Python table is created inside
+     * analyze(). Passing null for it records that analysis did not run rather
+     * than silently omitting the section.
+     */
+    private static void writeSymbolTables(CompilerConfig config, BuildLog log,
+                                          SymbolTable analysisTable,
+                                          SymbolTable templateTable) {
+        String symbols = TreePrinter.renderSymbolTables(analysisTable, templateTable);
+        write(config.compilerOutputDir.resolve("symbol_table.txt"), symbols, log);
+
+        if (config.printTrees) {
+            System.out.print(TreePrinter.forConsole(symbols));
         }
     }
 

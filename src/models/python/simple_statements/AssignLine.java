@@ -16,7 +16,7 @@ public class AssignLine extends Node {
 
         String indent = getIndent(level);
 
-        return "assign line\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "├─ target: " + target.print(level + 2)
                 + indent + "└─ expr: " + expr.print(level + 2)

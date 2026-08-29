@@ -35,7 +35,7 @@ public class BlockNode extends Node {
 
         StringBuilder sb = new StringBuilder();
 
-        sb.append(this.nodeName).append("\n");
+        sb.append(header()).append("\n");
 
         for (int i = 0; i < statements.size(); i++) {
 

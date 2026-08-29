@@ -22,7 +22,7 @@ public class IsExpression extends Expression {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "in expr\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "├─ expr: " + expr.print(level + 2)
                 + indent + "├─ optor: is" + (negated ? " not" : "") + "\n"

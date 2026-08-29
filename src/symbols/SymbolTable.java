@@ -76,13 +76,14 @@ public class SymbolTable {
         System.out.print(render());
     }
 
-    /** The table as text, so it can be written to a file as well as printed. */
+    /**
+     * The table as text, so it can be written to a file as well as printed.
+     *
+     * Scopes are rendered as a tree: each one carries its own column headings
+     * and its nested scopes are indented beneath it.
+     */
     public String render() {
         StringBuilder out = new StringBuilder();
-        out.append(String.format("%-30s%-30s%-30s%-40s%-30s%n",
-                "symbol", "kind", "type", "value", "scope"));
-        out.append(String.format("%-30s%-30s%-30s%-40s%-30s%n",
-                "--------------", "--------------", "--------------", "--------------", "--------------"));
         globalScope.render(out);
         return out.toString();
     }

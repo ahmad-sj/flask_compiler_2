@@ -1,36 +1,8 @@
-/* Extracted from the inline <style> block that used to live in base.html. */
-body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  background: #f8f9fa;
-  color: #333;
-}
-header {
-  background: #343a40;
-  color: white;
-  padding: 1rem;
-  text-align: center;
-}
-nav {
-  background: #495057;
-  padding: 0.8rem;
-  text-align: center;
-}
-nav a {
-  color: #fff;
-  margin: 0 1rem;
-  text-decoration: none;
-  font-weight: bold;
-}
-nav a:hover {
-  text-decoration: underline;
-}
-.container {
-  max-width: 1100px;
-  margin: 2rem auto;
-  padding: 0 1rem;
-}
+/* Styles for the page chrome that base.jinja owns - body, header, nav and the
+   container - now live in a <style> block inside base.jinja itself, so the
+   template carries the styles for the markup it defines. That block is parsed
+   by the CSS half of the template grammar; this file is copied verbatim and
+   never parsed. Keep a rule in whichever place owns the markup it targets. */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

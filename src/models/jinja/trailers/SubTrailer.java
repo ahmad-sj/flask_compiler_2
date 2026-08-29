@@ -22,7 +22,7 @@ public class SubTrailer extends Trailer {
     public String print(int level) {
         String indent = getIndent(level );
 
-        return "sub trailer:\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "└─ expr: " + expr.print(level + 2)
                 ;

@@ -18,7 +18,7 @@ public class CallTrailer extends Trailer {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "call trailer:\n" +
+        return header() + "\n" +
                 (argList == null
                         ? indent + "└─ line no: " + lineNumber + "\n"
                         : indent + "├─ line no: " + lineNumber + "\n"

@@ -20,7 +20,7 @@ public class GenExpression extends Node {
 
     @Override
     public String print(int level) {
-        return "generator expr: \n" +
+        return header() + "\n" +
                 "├─ line no: " + this.lineNumber + "\n" +
                 "├─ value: " + valueNode.print(level + 1) + "\n" +
                 "├─ name: " + nameNode.print(level + 1) + "\n" +

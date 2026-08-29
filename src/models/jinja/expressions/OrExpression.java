@@ -41,7 +41,7 @@ public class OrExpression extends Expression {
             }
         }
 
-        return "or expr\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + orExpr
                 ;

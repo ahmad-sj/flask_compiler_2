@@ -22,7 +22,7 @@ public class IfBlock extends JinjaBlock {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "if block\n" +
+        return header() + "\n" +
                 indent + "├─ line no: " + lineNumber + "\n" +
                 (nodeBody == null
                         ? indent + "└─ condition: " + condition.toString() + "\n"

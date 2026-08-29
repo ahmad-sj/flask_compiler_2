@@ -21,7 +21,7 @@ public class FilterExpression extends Expression {
     public String print(int level) {
         String indent = getIndent(level + 1);
 
-        return "filter\n" +
+        return header() + "\n" +
                 indent + "├─ line no: " + lineNumber + "\n" +
                 (argList == null
                         ? indent + "└─ name: " + filterName.print(level + 2)

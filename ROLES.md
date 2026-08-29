@@ -1,214 +1,209 @@
-# Team Roles
+# Interview Roles — who presents what
 
-Five areas, split along compiler-phase boundaries so each person owns a stage
-that can be explained, demoed and defended on its own.
+This is a **presentation plan**, not a record of authorship. It says who explains
+which part of the compiler during the defence. The authorship record produced
+from `git log` is in [CONTRIBUTIONS.md](CONTRIBUTIONS.md).
 
-| # | Owner | Area | Approx. lines |
-| --- | --- | --- | ---: |
-| 1 | **Melad** | Grammar, Lexer & Parser | ~965 grammar + generated |
-| 2 | **Aram** | AST classes & Tree Printer | ~3,350 + ~400 |
-| 3 | **Raghad** | Visitors (parse tree → AST) | ~2,120 |
-| 4 | **Ahmad** | Symbol Table & Semantic Analysis | ~2,090 |
-| 5 | **Yousef** | Code Generation & Demo App | ~2,170 + ~680 |
+**Format:** 15 minutes, 5 people — about **2½ minutes each**, leaving ~2½
+minutes of slack. You will lose time to questions, so treat 2½ as the ceiling.
 
-Shared by everyone: the build scripts, `check.ps1`, and keeping the reports
-current.
+Each part is built the same way: **one artifact on screen, one core idea, one
+question you can survive.** Nobody has time to explain a whole subsystem.
 
 ---
 
-## 1. Melad — Grammar, Lexer & Parser
+## The split
 
-Owns how source text becomes tokens and a parse tree. **Project requirement §1.**
+| # | Part | Artifact to show | Depth of likely follow-up | Owner |
+| --- | --- | --- | --- | --- |
+| 1 | Grammars & lexing | `compiler_output/tokens.txt` | **Deep** | **ahmad.sj** |
+| 2 | Parse tree → AST (visitors) | `parse_tree.txt` + `ast_python.txt` | Medium | |
+| 3 | Symbol table & semantic analysis | `symbol_table.txt` + `semantic_report.txt` | **Deep** | **Melad** |
+| 4 | Code generation & context data | `generation_log.txt` + `output/index.html` | Medium | |
+| 5 | AST printing & live demo | `ast_python.txt` + browser | Shallow | |
 
-**Files**
-- `grammars/pythonLexer.g4`, `grammars/pythonParser.g4`
-- `grammars/templateLexer.g4`, `grammars/templateParser.g4`, `grammars/templateFragments.g4`
-- `src/antlr/**` — generated; regenerate, never hand-edit
-- `src/antlr/Python3LexerBase.java` — the INDENT/DEDENT logic
+Parts 1 and 3 are where a follow-up question stops being answerable from a
+script — the lexer mode machine and the scope chain both invite "show me why".
+They are assigned to the two people who worked on those areas directly.
 
-**Responsibilities**
-- Token and rule definitions for all four languages: Python, Jinja2, HTML, CSS
-- The template lexer's mode machine — `EXPRESSION_MODE`, `J_STMNT_MODE`,
-  `CSS_BLK`, `ATTR_VAL_QOUTED` and the transitions between them
-- Regenerating the parser after any `.g4` change:
-  ```sh
-  cd grammars
-  java -jar ../dependencies/antlr-4.13.2-complete.jar -Dlanguage=Java -visitor -o ../src/antlr templateLexer.g4 templateParser.g4
-  ```
-
-**Must be able to explain in the demo**
-- Why Python needs synthetic INDENT/DEDENT tokens, and where they come from
-- Why the template lexer uses modes instead of one flat token set
-- The difference between the token stream and the parse tree
-  (`compiler_output/tokens.txt` vs `parse_tree.txt`)
-
-**Open work**
-- CSS grammar has no attribute selectors (`[attr*="v"]`) or functional
-  pseudo-classes (`:not(...)`) — see *Known limitations* in `README.md`
+Parts 2, 4 and 5 are for the remaining three members to divide. Each is
+self-contained: no part depends on another being explained first.
 
 ---
 
-## 2. Aram — AST Classes & Tree Printer
+## 1 · Grammars & lexing — ahmad.sj
 
-Owns the shape of the tree and how it is displayed. **Requirements §2 and §5.**
+**Core idea.** Two grammar families, because the two languages have genuinely
+different lexical rules. Python is indentation-sensitive: `Python3LexerBase`
+synthesises INDENT/DEDENT tokens so a context-free grammar can express blocks.
+Templates are mode-sensitive: **12 lexer modes**, where `{{` pushes
+`EXPRESSION_MODE` and `}}` pops it, `{%` pushes `J_STMNT_MODE`, and `if`/`for`
+push expression mode *on top of that* — which is why `%}` is
+`J_EXPR_STMNT_END : '%}' -> popMode, popMode` at
+[templateLexer.g4:75](grammars/templateLexer.g4#L75).
 
-**Files**
-- `src/models/**` — 102 classes, all extending `Node`
-- `src/models/Node.java` — node ID, node name/type, line number
-- `src/app/TreePrinter.java` — the driver
-- `src/app/AstDumper.java` — the JSON dumps
+**Show.** `compiler_output/tokens.txt` — the mode switches, and the INDENT
+tokens flagged `<-- synthetic`.
 
-**Responsibilities**
-- The class hierarchy and its use of inheritance and polymorphism
-- Every node storing its **name/type, numeric ID and source line**
-- A `print(int level)` override per node type, recursing into children
-- The driver that walks the roots and calls them
+**Be ready for.**
 
-**Must be able to explain in the demo**
-- The hierarchy diagram in `REPORT.md` §2
-- Why node IDs run lower for children than parents (the visitor builds children
-  first, so IDs record construction order)
-- Where node IDs appear: every node in the JSON, top-level headers in the text
-- Why the AST survives execution intact — rendering only reads it
+- *"Where are the HTML and CSS grammars?"* → Inside `templateLexer.g4` and
+  `templateParser.g4`, as lexer modes plus parser rules producing
+  `HtmlElement` and `CssBlock` nodes. Hand to part 5 for the CSS proof.
+- *"How does the lexer separate raw HTML text from Jinja tags?"* → The mode
+  machine above. This is the strongest answer in the whole defence; lead with it.
 
-**Open work**
-- The text tree shows node IDs only on top-level headers. Putting them on every
-  line means touching all 66 `print()` methods.
+**Files.** `grammars/*.g4`, `src/antlr/Python3LexerBase.java`.
 
 ---
 
-## 3. Raghad — Visitors
+## 2 · Parse tree → AST (visitors)
 
-Owns turning the parse tree into the AST. **Requirement §3.**
+**Core idea.** ANTLR generates `BaseVisitor<T>`; we specialise it. Four
+visitors — `AppVisitor` and `PythonVisitor` for Python, `TemplateVisitor` and
+`NodeVisitor` for templates. They **construct our own node classes**; ANTLR's
+parse tree is discarded once the AST exists.
 
-**Files**
-- `src/visitors/AppVisitor.java` — Python parse tree → `App`
-- `src/visitors/PythonVisitor.java` — Python rules → `models.python.*`
-- `src/visitors/TemplateVisitor.java` — template root → `Template`
-- `src/visitors/NodeVisitor.java` — Jinja + HTML + CSS rules → nodes
+**Show.** `parse_tree.txt` (~335 KB, one node per grammar rule) beside
+`ast_python.txt` (~15 KB). The size difference is the argument.
 
-**Responsibilities**
-- One visit method per grammar rule that produces a node
-- Setting `nodeName` and `lineNumber` on everything constructed
-- Keeping visitors in step with Melad's grammar: a renamed or relabelled rule
-  changes the generated visitor interface
+**Be ready for.**
 
-**Must be able to explain in the demo**
-- How ANTLR's generated `BaseVisitor<T>` is specialised
-- Why `{% elif %}` and `{% else %}` end up *inside* the if-body rather than as
-  siblings — this follows the grammar, and the renderer depends on it
-- Why operators must be captured, not just operands: they were dropped once,
-  which made every `-` evaluate as `+`
+- *"Is your AST your own, or ANTLR's parse tree?"* → Ours, 98 classes. Show the
+  same route in both files.
+- *"Why visitors and not listeners?"* → A visitor controls traversal order and
+  returns a typed value, which is what building a tree needs. A listener is
+  pushed by the walker and returns nothing.
 
-**Interfaces**
-- Consumes: Melad's generated parser
-- Produces: Aram's node classes
+**Study.** `AppVisitor.java` is 30 lines — read all of it. Then `visitAssignLine`
+in `PythonVisitor.java` and `visitForBlock` in `NodeVisitor.java`.
 
 ---
 
-## 4. Ahmad — Symbol Table & Semantic Analysis
+## 3 · Symbol table & semantic analysis — Melad
 
-Owns correctness checking. **Requirement §4.**
+**Core idea.** `SymbolTable` → `Scope` (a tree, each with a parent and children)
+→ `Symbol`. `Scope.resolve` walks the parent chain, so an inner scope sees outer
+names but not the reverse. There are **two** tables: `SemanticAnalyzer` builds
+the Python one, `NodeVisitor` builds the template one while constructing ASTs.
+**Generation consults neither** — it resolves names against extracted context
+data instead.
 
-**Files**
-- `src/symbols/SymbolTable.java`, `Scope.java`, `Symbol.java`, `SemanticError.java`
-- `src/visitors/SemanticAnalyzer.java` — Python checks
-- `src/visitors/TemplateSemanticAnalyzer.java` — template checks
-- `tests/test_*.py`, `tests/valid/`, `tests/bad_templates/`
+**Show.** `symbol_table.txt` — 13 scopes and 27 symbols on the demo, with
+nesting visible. Then `semantic_report.txt`.
 
-**Responsibilities**
-- Symbol table operations: `define` (insert), `resolve`/`lookup`, `update`,
-  `enterScope`/`exitScope`
-- The Python checks: undefined variables, scope violations, redefinition,
-  arity, type mismatch, unreachable code, recursion without a base case, and
-  the Flask bootstrap checks
-- The template checks: names not provided to a template, `url_for` naming an
-  unknown route, missing `extends`/`render_template` targets, unknown filters
-  and tests, loop variables used after `{% endfor %}`
-- **Guarding against false positives** — `tests/valid/` holds legal programs
-  that must report zero errors
+**Be ready for.**
 
-**Must be able to explain in the demo**
-- Why the symbol table is used *only* in analysis, never in generation
-- Why module-level names are hoisted before any function body is analysed
-  (without it, calling a function defined lower in the file was wrongly
-  reported as undefined, and blocked builds that should have succeeded)
-- Why a false positive is worse than a missed error
+- *"Walk me through the symbol table's helper methods."* → `enterScope` /
+  `exitScope` / `define` / `resolve`, and the parent-chain walk in
+  `Scope.resolve`.
+- *"What happens if a template uses a variable the context doesn't provide?"* →
+  Demo it live: hard error, generation blocked, exit 1, zero files written.
+- *"Why doesn't the generator use the symbol table?"* → The table answers "is
+  this name legal here"; generation answers "what is this name's value".
 
-**Open work — not yet detected**
-- Use before assignment (`total = total + 1` with `total` unassigned)
-- A route that returns only on some branches, so it can return `None`
-- A type mismatch nested inside a larger expression (`"text" + 5 * 2`)
-
-Each has real false-positive risk; a check that misfires is worse than none.
+**Files.** `src/symbols/**`, `src/visitors/SemanticAnalyzer.java`,
+`src/visitors/TemplateSemanticAnalyzer.java`.
 
 ---
 
-## 5. Yousef — Code Generation & Demo App
+## 4 · Code generation & context data
 
-Owns everything after analysis: producing the site.
+**Core idea.** `PythonDataExtractor` walks the Python AST and produces two
+things: the module-level data, and one `RouteInfo` per `@app.route`. That map is
+the **only** input the renderer receives — it is the boundary where the two
+front-ends meet. `JinjaRenderer` then walks the Jinja AST to emit HTML; it never
+runs a regular expression over template text. A route with a URL parameter
+generates one page per item.
 
-**Files**
-- `src/visitors/PythonDataExtractor.java` — AST → context data
-- `src/visitors/JinjaRenderer.java` — AST walk → HTML
-- `src/visitors/ExpressionEvaluator.java` — expression evaluation, filters, tests
-- `src/app/CodeGenerator.java` — page planning, asset copying, `data.js`
-- `src/models/RouteInfo.java` — the route model
-- `project/**` — the demo app, templates, `style.css`, `script.js`
-- `tests/runtime-test.js`
+**Show.** `generation_log.txt` — the five discovered routes, then ten pages
+rendered.
 
-**Responsibilities**
-- Extracting module data and route metadata statically from the Python AST
-- Rendering by **walking the Jinja AST**, never by regex over template text
-- Per-route page planning, including one page per item for parameterized routes
-- The browser runtime: add / edit / delete through `localStorage`
+**Be ready for.**
 
-**Must be able to explain in the demo**
-- Why generation must not consult the symbol table
-- How a parameterized route discovers what to iterate — read from the generator
-  expression in the route body, not hardcoded to `products`
-- Why an item added in the browser needs the `?id=` shell page
-- The demo flows: list, add, view details, edit, delete
+- *"Do you execute the Python?"* → No. No interpreter, no bytecode. The AST is
+  walked and literals are extracted; anything not statically knowable resolves
+  to null.
+- *"How does a parameterised route know what to iterate?"* → It reads the
+  generator expression in the route body. Nothing is hardcoded to `products`.
+
+**Study.** `CodeGenerator.generate()`, `JinjaRenderer.renderFor()`,
+`PythonDataExtractor.toJavaValue()`.
 
 ---
 
-## Working agreement
+## 5 · AST printing & the live demo
 
-**Interfaces are contracts.** Each stage consumes the one before it:
+**Core idea.** `models.Node` is the abstract base and carries the three required
+pieces of identity: node ID, node name, source line. `print(int level)` is
+declared there and overridden in **66** subclasses, dispatched polymorphically
+through `Node` references. `TreePrinter` walks the roots; each node prints its
+own header and recurses into its children.
 
-```
-Melad ──▶ Raghad ──▶ Aram ──▶ Ahmad ──▶ Yousef
-grammar    visitors   AST      checks    output
-```
+**Show.** `ast_python.txt` — point at `#8 multi import line (line 2)`, then at a
+*nested* child showing its own ID and line. Then open `output/index.html` in a
+browser: real products, images, prices, CSS applied.
 
-Changing a shared type — `Node`, `Template`, `RouteInfo`, `SemanticError` —
-affects people downstream. Say so before you change one.
+**Be ready for.**
 
-**Before pushing, run:**
+- *"Show me inheritance and polymorphism."* → Base class `Node.java:16`,
+  overridden method `print(int)` at `Node.java:63`, dispatch at
+  `TreePrinter.java:56` and recursively at `NodeBody.java:38`. Lead with
+  `Expression` (20 subclasses) or `HtmlElement`.
+- *"Show me a node's line number and node name."* → Any line of the printed
+  tree; every structural node opens with `#id name (line N)`.
+- *"Show me the CSS grammar working."* → The `<style>` block in `base.jinja`
+  produces 7 `CssBlock` nodes and exercises five of the six selector kinds.
+
+**Warning.** This part looks easiest but invites *"now show me a class that
+overrides `print()`"*. Open two or three of them beforehand and be able to name
+them.
+
+---
+
+## Timing
+
+Person 1 opens with **30 seconds** of pipeline overview — source → tokens →
+parse tree → AST → semantic analysis → generation → HTML — then goes into
+part 1. Everyone else goes straight into their part.
+
+| Slot | Minutes |
+| --- | --- |
+| Overview + part 1 | 0:00 – 3:00 |
+| Part 2 | 3:00 – 5:30 |
+| Part 3 | 5:30 – 8:00 |
+| Part 4 | 8:00 – 10:30 |
+| Part 5 + demo | 10:30 – 13:00 |
+| Questions | 13:00 – 15:00 |
+
+---
+
+## Before you walk in
+
+Run once, so every artifact is fresh and open in a tab:
+
 ```powershell
 .\build.ps1
-.\check.ps1
-```
-
-All six groups must pass. If you add a semantic check, add both a failing
-fixture in `tests/` **and** a valid program in `tests/valid/` that must stay
-clean.
-
-**Branches.** Work on a branch named for your area, rebase onto `main` rather
-than merging, and keep `src/antlr/**` regenerated rather than hand-edited.
-
-**Demo readiness.** Every member should be able to run the compiler and talk
-through their own stage of the output:
-
-```powershell
 java -cp "out\classes;dependencies\antlr-4.13.2-complete.jar" app.FlaskCompiler --print-all
 ```
 
-| Stage | Owner | Where to look |
-| --- | --- | --- |
-| Tokens | Melad | `compiler_output/tokens.txt` |
-| Parse tree | Melad / Raghad | `compiler_output/parse_tree.txt` |
-| AST | Aram / Raghad | `compiler_output/ast_python.txt`, `ast_jinja.txt` |
-| Symbol table | Ahmad | `compiler_output/symbol_table.txt` |
-| Errors | Ahmad | `compiler_output/semantic_report.txt` |
-| Generated site | Yousef | `output/index.html` |
+`--print-all` echoes tokens, parse tree, ASTs and both symbol tables. Everything
+is written to `compiler_output/` either way.
+
+Have open: `tokens.txt`, `parse_tree.txt`, `ast_python.txt`, `symbol_table.txt`,
+`semantic_report.txt`, and `output/index.html` in a browser.
+
+## Known gaps — everyone should know these
+
+If asked, answer plainly rather than guessing:
+
+- Values substituted into a page are **not HTML-escaped**; `|safe` is not
+  recognised.
+- `url_for('static', filename=…)` is rejected as an unknown route — the
+  templates link `href="style.css"` directly, which resolves in the flat output.
+- A mismatched closing tag (`<div>x</p>`) is accepted and silently repaired.
+- A missing *key* (`{{ p.nmae }}`) is a warning, not an error, unlike a missing
+  *variable*, which blocks the build.
+- `not a == b` parses as `(not a) == b`; Python means `not (a == b)`.
+- `x += 2` is not supported. Unary minus, `**` and `//` are.
+- `output/` is not cleaned between runs, so a removed route leaves a stale page.

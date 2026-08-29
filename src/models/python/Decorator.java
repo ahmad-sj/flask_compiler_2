@@ -52,7 +52,7 @@ public class Decorator extends Node {
             }
         }
 
-        return this.nodeName + ":\n"
+        return header() + "\n"
                 + (callArgs == null ?
                 (
                         indent + "├─ line no: " + lineNumber + "\n"

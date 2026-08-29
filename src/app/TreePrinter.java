@@ -47,8 +47,11 @@ public final class TreePrinter {
         for (int i = 0; i < app.nodes.size(); i++) {
             Node node = app.nodes.get(i);
             out.append(nl());
-            out.append("[").append(i + 1).append("/").append(app.nodes.size()).append("] ")
-               .append(node.header()).append(nl());
+            // print() now opens with the node's own header(), so the frame
+            // only carries the position counter; printing header() here too
+            // would repeat the same line twice.
+            out.append("[").append(i + 1).append("/").append(app.nodes.size()).append("]")
+               .append(nl());
             out.append(divider());
             out.append(node.print(0));
         }
@@ -75,7 +78,8 @@ public final class TreePrinter {
                 continue;
             }
             for (Node node : template.nodes) {
-                out.append(nl()).append(node.header()).append(nl());
+                // As above: print() emits the header itself.
+                out.append(nl());
                 out.append(divider());
                 out.append(node.print(0));
             }
@@ -83,10 +87,49 @@ public final class TreePrinter {
         return out.toString();
     }
 
-    /** Renders the symbol table. */
-    public static String renderSymbolTable(SymbolTable symbolTable) {
+    /**
+     * Renders both symbol tables, each under its own banner.
+     *
+     * There are two, built by different phases for different languages, and
+     * printing only one of them was misleading: the file was titled "SYMBOL
+     * TABLE" but held nothing but Jinja block names, because the Python table
+     * belonged to SemanticAnalyzer and was never asked for.
+     *
+     * @param analysisTable the Python table from SemanticAnalyzer; null when
+     *                      analysis did not run (a backend that failed to parse)
+     * @param templateTable the table NodeVisitor fills while building template ASTs
+     */
+    public static String renderSymbolTables(SymbolTable analysisTable,
+                                            SymbolTable templateTable) {
         StringBuilder out = new StringBuilder();
-        banner(out, "SYMBOL TABLE");
+
+        out.append(renderSymbolTable(
+                "SYMBOL TABLE 1 of 2 - PYTHON (semantic analysis)", analysisTable,
+                "Built by SemanticAnalyzer while checking the backend."
+                        + " Holds module variables, route functions and their parameters.",
+                "not built - the backend did not parse, so analysis never ran"));
+
+        out.append(renderSymbolTable(
+                "SYMBOL TABLE 2 of 2 - TEMPLATES (AST construction)", templateTable,
+                "Built by NodeVisitor while constructing the template ASTs."
+                        + " Holds {% block %} names and {% for %} loop variables.",
+                "not built"));
+
+        return out.toString();
+    }
+
+    /** Renders one symbol table under a banner, with a note on where it comes from. */
+    public static String renderSymbolTable(String title, SymbolTable symbolTable,
+                                           String provenance, String absentReason) {
+        StringBuilder out = new StringBuilder();
+        banner(out, title);
+        out.append(provenance).append(nl()).append(nl());
+
+        if (symbolTable == null) {
+            out.append("(").append(absentReason).append(")").append(nl());
+            return out.toString();
+        }
+
         out.append(symbolTable.render());
         out.append(nl())
            .append("Scopes: ").append(symbolTable.scopeCount())

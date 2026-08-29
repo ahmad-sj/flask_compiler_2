@@ -46,7 +46,7 @@ public class ListType extends Atom {
             }
         }
 
-        return "list type:\n" +
+        return header() + "\n" +
                 (itemList == null
                         ? indent + "└─ line no: " + lineNumber + "\n"
                         : indent + "├─ line no: " + lineNumber + "\n"

@@ -12,6 +12,7 @@ import models.html.attributes.UnquotedAttribute;
 import models.html.elements.HtmlElement;
 import models.html.elements.HtmlRegularElement;
 import models.html.elements.HtmlSelfClosingElement;
+import models.html.elements.HtmlStyleElement;
 import models.jinja.JinjaExpression;
 import models.jinja.blocks.ElifBlock;
 import models.jinja.blocks.ElseBlock;
@@ -377,19 +378,31 @@ public class JinjaRenderer {
         }
 
         out.append('>');
+
+        Node body = null;
         if (element instanceof HtmlRegularElement) {
-            HtmlRegularElement regular = (HtmlRegularElement) element;
-            if (regular.elementBody != null) {
-                out.append('\n');
-                renderNode(regular.elementBody, context, out, overrides);
-                out.append('\n');
-            }
-            out.append("</").append(element.tagName).append('>');
-            return;
+            body = ((HtmlRegularElement) element).elementBody;
+        } else if (element instanceof HtmlStyleElement) {
+            // A <style> element used to fall through to element.toString(),
+            // which re-emits the whole element including its own <style> and
+            // </style>. The opening tag was therefore written twice and the
+            // page came out as "<style><style>...</style>": the first tag was
+            // closed by the only </style>, so a browser treated the second one
+            // and the entire stylesheet after it as text and dropped the CSS.
+            body = ((HtmlStyleElement) element).elementBody;
+        } else {
+            // No other HtmlElement subclass exists today. Emitting the body
+            // verbatim keeps a future one from vanishing, and the closing tag
+            // below still balances the opening tag written above.
+            out.append(element.toString());
         }
 
-        // Style or other element kinds: keep the printed body verbatim.
-        out.append(element.toString());
+        if (body != null) {
+            out.append('\n');
+            renderNode(body, context, out, overrides);
+            out.append('\n');
+        }
+        out.append("</").append(element.tagName).append('>');
     }
 
     private void renderAttributes(List<Node> attributes, Map<String, Object> context,

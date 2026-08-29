@@ -45,7 +45,7 @@ public class DictType extends Atom {
             }
         }
 
-        return "dict type:\n" +
+        return header() + "\n" +
                 (pairsList == null
                         ? indent + "└─ line no: " + lineNumber + "\n"
                         : indent + "├─ line no: " + lineNumber + "\n"

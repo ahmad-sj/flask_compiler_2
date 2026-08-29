@@ -27,7 +27,7 @@ public class MultiImport extends Node {
                 namesList.append(", ");
         }
 
-        return "multi import\n" +
+        return header() + "\n" +
                 indent + "├─ line no: " + lineNumber + "\n" +
                 indent + "├─ from name: " + fromName.print(level + 2) +
                 indent + "└─ imported names: " + namesList.toString() + "\n"

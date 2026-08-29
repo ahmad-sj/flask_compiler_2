@@ -20,7 +20,7 @@ public class SingleImport extends Statement {
 
         String indent = getIndent(level);
 
-        return "- single import\n" +
+        return header() + "\n" +
                 indent + "├─ line no: " + lineNumber + "\n" +
                 (importAlias == null
                         ? indent + "└─ imported name: " + importedName.print(level + 2)

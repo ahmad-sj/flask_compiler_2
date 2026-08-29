@@ -44,7 +44,7 @@ public class ForBlock extends JinjaBlock {
                 loopVars.append(", ");
         }
 
-        return "for block\n" +
+        return header() + "\n" +
                 (nodeBody == null
                         ? indent + "├─ line no: " + lineNumber + "\n"
                         + indent + "└─ loop vars: " + loopVars.toString() + "\n"

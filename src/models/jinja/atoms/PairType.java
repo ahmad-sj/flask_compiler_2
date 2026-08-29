@@ -20,7 +20,7 @@ public class PairType extends Atom {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "pair type: \n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "├─ expr1: " + expr1.print(level + 2) + "\n"
                 + indent + "└─ expr2: " + expr1.print(level + 2) + "\n"

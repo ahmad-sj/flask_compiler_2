@@ -9,7 +9,7 @@ a working static site.
 | Part | Where |
 | --- | --- |
 | Grammar / lexer / parser | [grammars/](grammars/) → generated into [src/antlr/](src/antlr/) |
-| AST classes | [src/models/](src/models/) — 102 classes |
+| AST classes | [src/models/](src/models/) — 98 node classes |
 | Visitors | [src/visitors/](src/visitors/) |
 | Symbol table | [src/symbols/](src/symbols/) |
 | Tree printer | [src/app/TreePrinter.java](src/app/TreePrinter.java) + `print()` on every node |
@@ -25,15 +25,17 @@ mode-sensitive.
 
 | Grammar | Lines | Covers |
 | --- | ---: | --- |
-| `pythonLexer.g4` | 97 | 50 token rules, incl. INDENT/DEDENT |
-| `pythonParser.g4` | 260 | statements, functions, decorators, expressions |
+| `pythonLexer.g4` | 101 | 52 token rules, incl. INDENT/DEDENT |
+| `pythonParser.g4` | 274 | statements, functions, decorators, expressions |
 | `templateLexer.g4` | 154 | 108 token rules across lexical modes |
 | `templateParser.g4` | 336 | 68 rules: Jinja, HTML, CSS |
 | `templateFragments.g4` | 118 | shared character fragments |
 
-**Python.** Indentation is handled by `PythonIndentationLexerBase`, which
-synthesises INDENT/DEDENT tokens the parser can use as block delimiters — the
-standard solution for an off-side-rule language in a context-free grammar.
+**Python.** Indentation is handled by
+[`Python3LexerBase`](src/antlr/Python3LexerBase.java), named as the lexer's
+`superClass` in [pythonLexer.g4:13](grammars/pythonLexer.g4#L13). It synthesises
+INDENT/DEDENT tokens the parser can use as block delimiters — the standard
+solution for an off-side-rule language in a context-free grammar.
 
 **Templates — lexical modes.** A template file is really four languages
 interleaved, so the lexer switches modes rather than trying to write one token
@@ -59,11 +61,22 @@ and control blocks: `if` / `elif` / `else`, `for` / `else`, `set`, `extends`,
 **CSS coverage.** `cssBlock : selectorList CSS_LBRACE cssProp* BLK_RBRACE`, with
 id / class / element / descendant / group / pseudo-class selectors.
 
+Demonstrated by the `<style>` block in
+[base.jinja](project/templates/base.jinja), which holds the styles for the
+markup that template owns. One run over `project/` builds 7 `CssBlock` nodes and
+exercises five of the six selector kinds — 9 element, 2 descendant, 1 class,
+1 group and 1 pseudo-class. Only `IdSelector` is unused, because no markup in
+the demo carries an `id`. `style.css` is copied verbatim and never parsed, which
+is why it can keep rules the grammar does not accept, such as
+`form:not([style*="display: inline"])`.
+
 ---
 
 ## 2. Abstract Syntax Tree
 
-102 classes under `src/models/`, all descending from a single abstract base.
+102 files under `src/models/`: **98 node classes**, all descending from the single
+abstract base `Node`, plus three plain containers — `App`, `Template` and
+`RouteInfo` — which *hold* nodes rather than being nodes themselves.
 
 Every node stores the three required pieces of identity:
 
@@ -208,8 +221,17 @@ content        block name    StringType    content     content block
 product        id            IdType        product     for block at 10:4
 ```
 
-The symbol table is used **only** by semantic analysis. Generation resolves
-names against the extracted context instead, so the two phases stay independent.
+**Generation never consults the symbol table.** `CodeGenerator`, `JinjaRenderer`,
+`ExpressionEvaluator` and `PythonDataExtractor` hold no reference to one; they
+resolve names against the extracted context instead, so checking and output stay
+independent.
+
+There are in fact **two** tables, and the one printed above is the template table:
+`NodeVisitor` populates it while *constructing* the template AST, which is where
+those `{% block %}` names and the `{% for %}` loop variable come from.
+`SemanticAnalyzer` builds a second, separate table for the Python side. So the
+table is not exclusive to semantic analysis — it is exclusive to the front end,
+and generation is what stays clear of it.
 
 ---
 

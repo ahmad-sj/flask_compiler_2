@@ -45,7 +45,7 @@ public class HtmlRegularElement extends HtmlElement {
             }
         }
 
-        return "html element: <" + tagName + ">\n" +
+        return header() + "\n" +
                 (attributes.isEmpty() ?
                         (elementBody == null
                                 // line no only

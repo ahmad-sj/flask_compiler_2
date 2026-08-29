@@ -64,11 +64,19 @@ public abstract class Node {
         return "################## method print is not overrided in class: " + nodeName + ", indent level: " + level + " ##################\n";
     }
 
+    /**
+     * Indentation for one nesting level.
+     *
+     * Three spaces, matching the width of the "|- " branch markers so children
+     * line up under their parent's text. This used to emit three backticks per
+     * level, which at any real depth produced runs like ``````````````` and
+     * made the printed tree read as broken Markdown.
+     */
     public String getIndent(int level) {
         StringBuilder indent = new StringBuilder();
 
         for (int i = 0; i < level; i++) {
-            indent.append("```");
+            indent.append("   ");
         }
 
         return indent.toString();

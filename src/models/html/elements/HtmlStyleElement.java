@@ -5,7 +5,9 @@ import models.Node;
 import java.util.ArrayList;
 
 public class HtmlStyleElement extends HtmlElement {
-    Node elementBody; // object of type HtmlElementBody
+    // public, matching HtmlRegularElement: the renderer walks this body rather
+    // than falling back to toString(), which re-emitted the surrounding tags.
+    public Node elementBody; // object of type HtmlElementBody
 
     public HtmlStyleElement(String tagName, ArrayList<Node> attrList, Node elementBody) {
         super(tagName, attrList);
@@ -45,7 +47,7 @@ public class HtmlStyleElement extends HtmlElement {
             }
         }
 
-        return "html element: <" + tagName + ">\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + (attributes.isEmpty() ? "" : indent + "├─ attributes: " + attributes + "\n")
                 + (elementBody == null ? "" : indent + "└─ children:\n" + elementBody.print(level + 2));

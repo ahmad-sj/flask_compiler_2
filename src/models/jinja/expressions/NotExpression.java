@@ -18,7 +18,7 @@ public class NotExpression extends Expression {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "not expr\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "└─ expr: " + expression.print(level + 2)
                 ;

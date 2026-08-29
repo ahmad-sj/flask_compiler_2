@@ -20,7 +20,7 @@ public class Argument extends Expression {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "argument\n" +
+        return header() + "\n" +
                 (argName == null
                         ? indent + "└─ arg expr: " + expr.print(level + 1) + "\n"
                         : indent + "├─ arg expr: " + expr.print(level + 1) + "\n"

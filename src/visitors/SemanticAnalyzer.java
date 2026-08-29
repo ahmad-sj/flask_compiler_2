@@ -57,6 +57,19 @@ public class SemanticAnalyzer {
     /** Tracks the current symbol table with global and nested scopes. */
     private SymbolTable symbolTable;
 
+    /**
+     * The table built by the last analyze() call, or null before the first one.
+     *
+     * This used to be unreachable: the analyzer built a complete picture of the
+     * Python side - module variables, route functions, parameters, nested scopes
+     * - and then dropped it when analyze() returned. The only table anything
+     * printed was the template one, so symbol_table.txt showed a handful of
+     * Jinja block names and no Python symbols at all.
+     */
+    public SymbolTable getSymbolTable() {
+        return symbolTable;
+    }
+
     /** Accumulates all semantic errors found during analysis. */
     private List<SemanticError> errors;
 

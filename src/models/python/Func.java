@@ -35,7 +35,7 @@ public class Func extends Node {
 
         StringBuilder sb = new StringBuilder();
 
-        sb.append("function:")
+        sb.append(header())
                 .append("\n").append(indent).append("├─ line no: ").append(this.lineNumber)
                 .append("\n").append(indent).append("├─ name: ").append(funcName.toString())
         ;

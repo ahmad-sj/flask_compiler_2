@@ -8,7 +8,7 @@
 | الجزء | الموقع |
 | --- | --- |
 | القواعد النحوية / المحلل اللفظي / المحلل النحوي | [grammars/](grammars/) ← تُولَّد إلى [src/antlr/](src/antlr/) |
-| أصناف شجرة النحو المجردة (AST) | [src/models/](src/models/) — ١٠٢ صنف |
+| أصناف شجرة النحو المجردة (AST) | [src/models/](src/models/) — ٩٨ صنف عقدة |
 | الزوّار (Visitors) | [src/visitors/](src/visitors/) |
 | جدول الرموز | [src/symbols/](src/symbols/) |
 | طابعة الشجرة | [src/app/TreePrinter.java](src/app/TreePrinter.java) + دالة `print()` في كل عقدة |
@@ -23,13 +23,15 @@
 
 | ملف القواعد | الأسطر | ما يغطيه |
 | --- | ---: | --- |
-| `pythonLexer.g4` | ٩٧ | ٥٠ قاعدة توكن، منها INDENT/DEDENT |
-| `pythonParser.g4` | ٢٦٠ | الجُمل، الدوال، المُزخرِفات (Decorators)، التعابير |
+| `pythonLexer.g4` | ١٠١ | ٥٢ قاعدة توكن، منها INDENT/DEDENT |
+| `pythonParser.g4` | ٢٧٤ | الجُمل، الدوال، المُزخرِفات (Decorators)، التعابير |
 | `templateLexer.g4` | ١٥٤ | ١٠٨ قاعدة توكن موزّعة على أنماط لفظية |
 | `templateParser.g4` | ٣٣٦ | ٦٨ قاعدة: Jinja و HTML و CSS |
 | `templateFragments.g4` | ١١٨ | أجزاء المحارف المشتركة |
 
-**Python.** تُعالَج الإزاحة عبر `PythonIndentationLexerBase` الذي يُولِّد توكنات
+**Python.** تُعالَج الإزاحة عبر [`Python3LexerBase`](src/antlr/Python3LexerBase.java)
+المُعرَّف كصنف أساسي (`superClass`) للمحلل اللفظي في
+[pythonLexer.g4:13](grammars/pythonLexer.g4#L13)، وهو يُولِّد توكنات
 INDENT/DEDENT اصطناعية ليستخدمها المحلل النحوي كمُحدِّدات للكتل — وهو الحل المعتاد
 للغات ذات «قاعدة الهامش» (Off-side Rule) داخل قواعد خالية من السياق.
 
@@ -55,11 +57,21 @@ DEFAULT ──'<'──▶ START_TAG_MODE ──'style'──▶ STYLE_START_TAG
 **تغطية CSS.** القاعدة `cssBlock : selectorList CSS_LBRACE cssProp* BLK_RBRACE`،
 مع مُحدِّدات المعرّف والصنف والعنصر والمُتحدِّر والمجموعة والصنف الزائف (Pseudo-class).
 
+ويظهر ذلك عملياً في كتلة `<style>` داخل
+[base.jinja](project/templates/base.jinja) التي تحمل أنماط العناصر التي يملكها
+هذا القالب. تشغيلة واحدة على `project/` تبني ٧ عقد `CssBlock` وتُفعِّل خمسة من
+أنواع المُحدِّدات الستة: ٩ عنصر، و٢ مُتحدِّر، و١ صنف، و١ مجموعة، و١ صنف زائف.
+ويبقى `IdSelector` وحده غير مُستخدَم لعدم وجود سمة `id` في صفحات العرض التجريبي.
+أما `style.css` فيُنسخ حرفياً ولا يُحلَّل، ولهذا يمكنه الاحتفاظ بقواعد لا تقبلها
+القواعد النحوية مثل `form:not([style*="display: inline"])`.
+
 ---
 
 ## ٢. شجرة النحو المجردة (AST)
 
-١٠٢ صنف داخل `src/models/`، جميعها ترث من صنف أساسي مجرّد واحد.
+١٠٢ ملف داخل `src/models/`: **٩٨ صنف عقدة** ترث جميعها من الصنف الأساسي المجرّد
+الواحد `Node`، إضافةً إلى ثلاث حاويات بسيطة — `App` و`Template` و`RouteInfo` —
+*تحتوي* على العقد بدل أن تكون عقداً بذاتها.
 
 كل عقدة تخزّن عناصر الهوية الثلاثة المطلوبة:
 
@@ -201,8 +213,15 @@ content        block name    StringType    content     content block
 product        id            IdType        product     for block at 10:4
 ```
 
-جدول الرموز يُستخدم **فقط** في التحليل الدلالي. أما التوليد فيحلّ الأسماء مقابل
-السياق المستخرَج، فتبقى المرحلتان مستقلتين.
+**مرحلة التوليد لا تستخدم جدول الرموز إطلاقاً.** فالأصناف `CodeGenerator` و
+`JinjaRenderer` و `ExpressionEvaluator` و `PythonDataExtractor` لا تحمل أي إشارة
+إليه، بل تحلّ الأسماء مقابل السياق المستخرَج، فيبقى التحقّق والإخراج مستقلَّين.
+
+وفي الواقع هناك **جدولان**، والجدول المعروض أعلاه هو جدول القوالب: يملؤه
+`NodeVisitor` أثناء *بناء* شجرة AST للقالب، ومن هنا جاءت أسماء `{% block %}`
+ومتغيّر حلقة `{% for %}`. أما `SemanticAnalyzer` فيبني جدولاً ثانياً منفصلاً لجهة
+Python. إذن الجدول ليس حكراً على التحليل الدلالي، بل هو حكر على الواجهة الأمامية،
+والتوليد هو ما يبقى بعيداً عنه.
 
 ---
 

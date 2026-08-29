@@ -39,7 +39,7 @@ public class ExprLine extends Node {
 
         String indent = getIndent(level);
 
-        return "expr line\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "└─ expr: " + returnExpr.print(level + 2)
                 ;

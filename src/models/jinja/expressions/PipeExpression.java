@@ -43,7 +43,7 @@ public class PipeExpression extends Expression {
             }
         }
 
-        return "pipe expr\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "├─ expr: " + expr.print(level + 1)
                 + indent + "└─ filters:\n" + filters

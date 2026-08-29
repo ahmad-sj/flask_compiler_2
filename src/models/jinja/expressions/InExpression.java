@@ -20,7 +20,7 @@ public class InExpression extends Expression {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "in expr\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "├─ expr1: " + expr1.print(level + 2)
                 + indent + "├─ optor: in\n"

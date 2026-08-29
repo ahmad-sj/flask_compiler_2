@@ -154,11 +154,25 @@ addExprOptor
     ;
 
 mulExpr
-    : singleExpr (mulOperator singleExpr)* //done
+    : unaryExpr (mulOperator unaryExpr)* //done
     ;
 
 mulOperator
-    : (STAR | SLASH | PERCENT);               //done
+    : (STAR | SLASH | DOUBLESLASH | PERCENT);               //done
+
+// Unary sign, then exponentiation, mirroring templateParser.g4 which already
+// had both. Python binds ** tighter than a leading sign (-2 ** 2 is -4), which
+// falls out of unaryExpr sitting above powExpr rather than below it.
+unaryExpr
+    : (PLUS | MINUS) unaryExpr
+    | powExpr
+    ;
+
+// Right-associative: the right operand is a unaryExpr, not a powExpr, so
+// 2 ** 3 ** 2 groups as 2 ** (3 ** 2) the way Python evaluates it.
+powExpr
+    : singleExpr (DOUBLESTAR unaryExpr)?
+    ;
 
 // Block statements
 compoundStmt

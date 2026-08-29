@@ -33,7 +33,7 @@ public class Value extends Node {
 
 
         if (trailerList == null) {
-            sb.append("value:\n")
+            sb.append(header()).append("\n")
                     .append(indent).append("├─ line no: ").append(lineNumber).append("\n")
                     .append(indent).append("└─ base value: ").append(baseValue.print(level + 1))
 
@@ -48,7 +48,7 @@ public class Value extends Node {
                 trailers.append(trailerList.get(i));
             }
 
-            sb.append("value:\n");
+            sb.append(header()).append("\n");
             sb.append(indent).append("├─ line no: ").append(lineNumber).append("\n");
             sb.append(indent).append("├─ base value: ").append(baseValue.print(level + 1));
             sb.append(indent).append("└─ trailers: ").append(trailers).append("\n");

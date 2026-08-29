@@ -22,7 +22,7 @@ public class SetStatement extends JinjaBlock {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "set statement\n"
+        return header() + "\n"
                 + indent + "├─ id: " + id.print(level + 2)
                 + indent + "└─ value: " + expr.print(level + 2)
                 ;

@@ -430,6 +430,26 @@ public interface pythonParserListener extends ParseTreeListener {
 	 */
 	void exitMulOperator(pythonParser.MulOperatorContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link pythonParser#unaryExpr}.
+	 * @param ctx the parse tree
+	 */
+	void enterUnaryExpr(pythonParser.UnaryExprContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link pythonParser#unaryExpr}.
+	 * @param ctx the parse tree
+	 */
+	void exitUnaryExpr(pythonParser.UnaryExprContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link pythonParser#powExpr}.
+	 * @param ctx the parse tree
+	 */
+	void enterPowExpr(pythonParser.PowExprContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link pythonParser#powExpr}.
+	 * @param ctx the parse tree
+	 */
+	void exitPowExpr(pythonParser.PowExprContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link pythonParser#compoundStmt}.
 	 * @param ctx the parse tree
 	 */

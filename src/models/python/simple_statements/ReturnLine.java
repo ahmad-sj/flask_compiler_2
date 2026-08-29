@@ -25,7 +25,7 @@ public class ReturnLine extends Node {
 
         String indent = getIndent(level);
 
-        return "return line\n" +
+        return header() + "\n" +
                 (returnExpr == null
                         ? indent + "└─ line no: " + lineNumber + "\n"
                         : indent + "├─ line no: " + lineNumber + "\n"

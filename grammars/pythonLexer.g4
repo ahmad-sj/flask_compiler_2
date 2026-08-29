@@ -61,6 +61,10 @@ LESSOREQUAL     : '<=';
 GREATEROREQUAL  : '>=';
 PLUS            : '+';
 MINUS           : '-';
+// Two-character operators come first so maximal munch cannot split '**' into
+// two STARs or '//' into two SLASHes.
+DOUBLESTAR      : '**';
+DOUBLESLASH     : '//';
 STAR            : '*';
 SLASH           : '/';
 PERCENT         : '%';

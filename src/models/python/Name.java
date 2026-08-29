@@ -33,7 +33,7 @@ public class Name extends Node {
             }
         }
 
-        return "name\n" +
+        return header() + "\n" +
                 indent + "├─ line no: " + lineNumber + "\n" +
                 (trailers.isEmpty()
                         ? indent + "└─ id: " + id.print(level + 2)

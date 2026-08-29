@@ -34,10 +34,38 @@ public class Symbol {
                 text(name), text(kind), text(type), describeValue(), scope == null ? "" : text(scope.name));
     }
 
-    /** Values can be large trees, so show a single trimmed line. */
+    /**
+     * One row without the scope column, for the nested render.
+     *
+     * Scope.render() prints each scope under its own heading, so repeating the
+     * scope name on every row inside it is redundant.
+     */
+    public String row() {
+        return String.format("%-26s%-16s%-18s%s",
+                text(name), text(kind), text(type), describeValue());
+    }
+
+    /** Column headings matching row(). */
+    public static String rowHeader() {
+        return String.format("%-26s%-16s%-18s%s", "symbol", "kind", "type", "value");
+    }
+
+    /**
+     * Values can be large trees, so show a single trimmed line.
+     *
+     * A node's toString() walks the subtree, and a malformed one can throw - a
+     * missing visitor override putting a null into an operator list was enough
+     * to do it. Printing a diagnostic must never bring down the compiler, so a
+     * failure here degrades to a marker instead of propagating.
+     */
     private String describeValue() {
         if (value == null) return "-";
-        String rendered = value.toString().replaceAll("\\s+", " ").trim();
+        String rendered;
+        try {
+            rendered = value.toString().replaceAll("\\s+", " ").trim();
+        } catch (RuntimeException e) {
+            return "<unprintable " + value.getClass().getSimpleName() + ">";
+        }
         return rendered.length() > 38 ? rendered.substring(0, 35) + "..." : rendered;
     }
 

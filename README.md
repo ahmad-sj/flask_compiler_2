@@ -175,13 +175,97 @@ once; without it that group is skipped and the rest still runs.
 
 ## Known limitations
 
-- The CSS grammar has no attribute selectors (`[attr*="v"]`) or functional
-  pseudo-classes (`:not(...)`). Keep stylesheets in `style.css`, which is copied
-  rather than parsed; only `<style>` blocks inside templates go through the CSS
-  grammar.
+Each front-end parses a deliberate **subset** of its language — enough for a Flask
+data-and-routes backend and the templates that render it, not the whole language.
+Everything below is a real, reproducible boundary, not a rough edge.
+
+### Python subset
+
+Arithmetic is complete apart from augmented assignment. Unary sign,
+exponentiation and floor division all parse with Python's own precedence and
+associativity:
+
+| Supported | Parses as |
+| --- | --- |
+| `x = -5` | unary minus |
+| `x = 2 ** 3 ** 2` | `2 ** (3 ** 2)` — right-associative |
+| `x = -2 ** 2` | `-(2 ** 2)` — `**` binds tighter than the sign |
+| `x = a * b // c` | `(a * b) // c` — left-associative |
+
+Still a parse error:
+
+| Not supported | Example |
+| --- | --- |
+| augmented assignment | `x += 2` |
+
+Missing constructs:
+
+- f-strings and triple-quoted strings (`STRING` has no prefix or `"""` form)
+- list/dict comprehensions — `[p for p in ps]`. Generator expressions **in
+  parentheses** *are* supported, which is what `next((p for p in products …))`
+  in a route needs.
+- `class` — the `CLASS` token is defined in the lexer but no parser rule uses it
+- `with`, `try`/`except`, `del`, `global`, `lambda`, `yield`
+- default arguments (`def f(a, b=2)`) and `*args` / `**kwargs`
+- stacked decorators — exactly one decorator per function, which is all
+  `@app.route(...)` needs
+- dict keys must be literals, so `{k: 1}` with a variable key is rejected
+- tuple unpacking (`a, b = 1, 2`)
+
+One known precedence deviation: `not` binds **tighter** than comparison, so
+`not a == b` parses as `(not a) == b` where Python means `not (a == b)`.
+
+### Jinja subset
+
+Supported: `{{ }}`, `{% if %}`/`{% elif %}`/`{% else %}`, `{% for %}` (with
+`{% else %}`), `{% set %}`, `{% extends %}`, `{% block %}`, filters with
+arguments, and `loop.index` / `index0` / `revindex` / `first` / `last` / `length`.
+
+Not supported:
+
+- `{% include %}` and `{% macro %}`
+- whitespace control — `{%- … -%}`
+- Jinja's conditional expression `{{ a if cond else b }}`. This grammar uses the
+  C-style form **`{{ cond ? a : b }}`** instead, plus `??` for defaulting. Both
+  are deviations from real Jinja syntax.
+- a `#` inside a `{# comment #}` terminates it early
+
+### HTML subset
+
+- Tag names come from a **closed list** in `templateFragments.g4`. Anything
+  outside it — SVG elements, custom elements — fails to lex.
+- Void elements **must be self-closed**: write `<img src="a.png" />` and
+  `<meta charset="UTF-8" />`, not the bare form.
+- `<script>` bodies cannot contain `{`, `}`, `<` or `>`, so inline JavaScript
+  will not lex. Keep JS in `script.js`, which is copied rather than parsed.
+- Body text cannot contain a bare `{`, `}` or `>`; use `&gt;` and `&#123;`.
+- A mismatched closing tag (`<p>x</div>`) is currently accepted and the end tag
+  is discarded, so the output is silently repaired rather than reported.
+- Values substituted into a page are **not HTML-escaped**. An `escape` / `e`
+  filter exists but is opt-in, the reverse of Jinja's default; `|safe` is not
+  recognised.
+
+### CSS subset
+
+- Only `<style>` blocks inside templates go through the CSS grammar.
+  `style.css` is copied rather than parsed, and inline `style="…"` attributes
+  use a separate, simpler path.
+- No attribute selectors (`[attr*="v"]`), no functional pseudo-classes
+  (`:not(...)`), no `>` / `+` / `~` combinators, no `@media` or other at-rules,
+  no CSS comments.
+- Property values cannot contain quotes, so `font-family: "Segoe UI"` is
+  rejected. Use unquoted family names.
+
+### Data extraction and URLs
+
 - Data extraction is static. Values computed at request time — anything derived
   from `request.form`, a database, or arbitrary control flow — are not knowable
-  at build time and resolve to null.
+  at build time and resolve to null. Arithmetic, string concatenation and
+  function calls in a data definition are not evaluated either; only literals,
+  lists, dicts and references to other module-level names are.
 - `url_for()` pointing at a route that renders no template (a POST-only endpoint
   such as `delete`) resolves to `#`, since no static page exists for it. This is
   reported in `semantic_report.txt`.
+- `url_for('static', filename=…)` is **not** recognised — `static` is not a user
+  route, so it is reported as an unknown route and blocks the build. Link assets
+  directly (`href="style.css"`), which resolves correctly in the flat output.

@@ -28,7 +28,7 @@ public class TernaryExpression extends Expression {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "ternary expr\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "├─ cond expr: " + condExpr.print(level + 2)
                 + indent + "├─ true expr: " + trueExpr.print(level + 2)

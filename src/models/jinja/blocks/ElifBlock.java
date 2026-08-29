@@ -21,7 +21,7 @@ public class ElifBlock extends JinjaBlock {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "elif block\n" +
+        return header() + "\n" +
                 indent + "├─ line no: " + lineNumber + "\n" +
                 (nodeBody == null
                         ? indent + "└─ condition: " + condition.toString() + "\n"

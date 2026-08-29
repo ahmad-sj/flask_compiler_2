@@ -40,7 +40,7 @@ public class ConcatExpression extends Expression {
                 concatExpr.append(exprList.get(i).print(level + 2));
             }
         }
-        return "concat expr\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + concatExpr
                 ;

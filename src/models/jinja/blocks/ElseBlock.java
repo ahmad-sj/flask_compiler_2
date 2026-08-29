@@ -21,7 +21,7 @@ public class ElseBlock extends JinjaBlock {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "else block\n" +
+        return header() + "\n" +
                 (nodeBody == null
                         ? indent + "└─ line no " + lineNumber + "\n"
                         : indent + "├─ line no " + lineNumber + "\n"

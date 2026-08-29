@@ -20,7 +20,7 @@ public class UnaryExpression extends Expression {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "unary expr\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "├─ sign: " + unaryOperator.print(level)
                 + indent + "└─ expr: " + expr.print(level + 2)

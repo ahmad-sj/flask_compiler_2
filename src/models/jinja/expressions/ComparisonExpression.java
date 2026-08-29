@@ -24,7 +24,7 @@ public class ComparisonExpression extends Expression {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "comp expr\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "├─ expr1: " + expr1.print(level + 2)
                 + indent + "├─ optor: " + compOptor.print(level)

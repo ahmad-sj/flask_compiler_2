@@ -48,7 +48,7 @@ public class PrimaryExpression extends Expression {
             }
         }
 
-        return "primary type\n" +
+        return header() + "\n" +
                 indent + "├─ line no: " + lineNumber + "\n" +
                 (trailers.isEmpty()
                         ? indent + "└─ atom: " + atom.print(level + 2)

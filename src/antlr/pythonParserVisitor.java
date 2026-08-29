@@ -263,6 +263,18 @@ public interface pythonParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitMulOperator(pythonParser.MulOperatorContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link pythonParser#unaryExpr}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitUnaryExpr(pythonParser.UnaryExprContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link pythonParser#powExpr}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPowExpr(pythonParser.PowExprContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link pythonParser#compoundStmt}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

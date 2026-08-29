@@ -427,9 +427,9 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
         List<Node> exprList = new ArrayList<>();
         List<Operator> operators = new ArrayList<>();
 
-        // زيارة كل singleExpr
-        for (var singleCtx : ctx.singleExpr()) {
-            exprList.add(this.visit(singleCtx));
+        // زيارة كل unaryExpr
+        for (var unaryCtx : ctx.unaryExpr()) {
+            exprList.add(this.visit(unaryCtx));
         }
 
         // زيارة كل muloperator
@@ -476,6 +476,74 @@ public class PythonVisitor extends pythonParserBaseVisitor<Node> {
         CompareOperator compareOperator = new CompareOperator(ctx.getText());
         compareOperator.setLineNumber(ctx.getStart().getLine());
         return compareOperator;
+    }
+
+    /**
+     * A leading + or - sign, e.g. {@code x = -5}.
+     *
+     * Python had no unary operator at all before this: MINUS existed only as a
+     * binary operator inside addExpr, so a bare negative literal was a syntax
+     * error. Mirrors NodeVisitor.visitUnaryExpr on the template side.
+     */
+    @Override
+    public Node visitUnaryExpr(pythonParser.UnaryExprContext ctx) {
+        if (ctx.unaryExpr() == null) {
+            return this.visit(ctx.powExpr());
+        }
+
+        Node expr = this.visit(ctx.unaryExpr());
+        Node sign;
+
+        if (ctx.MINUS() != null) {
+            sign = new UnaryOperator(ctx.MINUS().getText());
+            sign.setLineNumber(ctx.MINUS().getSymbol().getLine());
+        } else {
+            sign = new UnaryOperator(ctx.PLUS().getText());
+            sign.setLineNumber(ctx.PLUS().getSymbol().getLine());
+        }
+        sign.setNodeName("sign type");
+
+        UnaryExpression unaryExpression = new UnaryExpression(sign, expr);
+        unaryExpression.setNodeName("unary expr");
+        unaryExpression.setLineNumber(ctx.getStart().getLine());
+
+        return unaryExpression;
+    }
+
+    /** Exponentiation, e.g. {@code x = 2 ** 3}. Right-associative. */
+    @Override
+    public Node visitPowExpr(pythonParser.PowExprContext ctx) {
+        if (ctx.DOUBLESTAR() == null) {
+            return this.visit(ctx.singleExpr());
+        }
+
+        Node baseValueExpr = this.visit(ctx.singleExpr());
+        Node powerValueExpr = this.visit(ctx.unaryExpr());
+
+        PowerExpression powerExpression = new PowerExpression(baseValueExpr, powerValueExpr);
+        powerExpression.setNodeName("power expr");
+        powerExpression.setLineNumber(ctx.DOUBLESTAR().getSymbol().getLine());
+
+        return powerExpression;
+    }
+
+    /**
+     * Captures the * / % operator itself, not just its operands.
+     *
+     * mulOperator has no labelled alternatives, so without this override ANTLR's
+     * visitChildren() ran instead and returned null for the whole rule. That
+     * null went straight into MulExpression's operator list, so every
+     * multiplication, division and modulo in the AST recorded its operands and
+     * lost the operator between them - the same fault that was fixed earlier for
+     * + and -, left behind on the mul rule because nothing printed these nodes.
+     */
+    @Override
+    public Node visitMulOperator(pythonParser.MulOperatorContext ctx) {
+        Operator operator = new Operator(ctx.getText());
+        operator.setLineNumber(ctx.getStart().getLine());
+        operator.setNodeName("mul operator");
+
+        return operator;
     }
 
     @Override

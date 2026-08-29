@@ -42,7 +42,7 @@ public class AndExpression extends Expression {
             }
         }
 
-        return "and expr\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + andExpr
                 ;

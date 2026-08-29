@@ -16,7 +16,7 @@ public class ExtendsBlock extends JinjaBlock {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "extends block \n"
+        return header() + "\n"
                 + indent + "├─ line no: " + this.lineNumber + "\n"
                 + indent + "└─ templateName: " + templateName + "\n";
     }

@@ -22,7 +22,7 @@ public class JinjaExpression extends Node {
     public String print(int level) {
         String indent = getIndent(level + 1);
 
-        return "jinja expression" + "\n"
+        return header() + "\n" + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "└─ expression: " + this.expression.print(level + 2)
                 ;

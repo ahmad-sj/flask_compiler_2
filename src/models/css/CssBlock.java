@@ -46,7 +46,7 @@ public class CssBlock extends Node {
             }
         }
 
-        return "css block\n" +
+        return header() + "\n" +
                 indent + "├─ line no: " + lineNumber + "\n" +
                 (propList.isEmpty()
                         ? indent + "└─ selectors: " + selectorList.toString() + "\n"

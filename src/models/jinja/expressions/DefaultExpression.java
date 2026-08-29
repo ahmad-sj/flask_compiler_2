@@ -24,7 +24,7 @@ public class DefaultExpression extends Expression {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "default expr\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "├─ main expr: " + expr.print(level + 2)
                 + indent + "└─ default expr: " + expr.print(level + 2)

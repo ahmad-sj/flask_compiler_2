@@ -18,7 +18,7 @@ public class ParenthedExpression extends Expression {
     public String print(int level) {
         String indent = getIndent(level);
 
-        return "parenthed expr\n"
+        return header() + "\n"
                 + indent + "├─ line no: " + lineNumber + "\n"
                 + indent + "└─ expr: " + expr.print(level + 2)
                 ;

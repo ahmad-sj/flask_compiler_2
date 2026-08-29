@@ -1,4 +1,4 @@
-// Generated from templateParser.g4 by ANTLR 4.13.2
+// Generated from grammars/templateParser.g4 by ANTLR 4.13.2
  package antlr; 
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;

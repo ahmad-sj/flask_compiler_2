@@ -1,4 +1,4 @@
-// Generated from templateLexer.g4 by ANTLR 4.13.2
+// Generated from grammars/templateLexer.g4 by ANTLR 4.13.2
 
 package antlr;
 

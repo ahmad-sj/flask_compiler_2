@@ -1,4 +1,4 @@
-// Generated from C:/Users/Admin/Desktop/FITE_Projects/compiler_2/flask_compiler_2/grammars/pythonParser.g4 by ANTLR 4.13.2
+// Generated from grammars/pythonParser.g4 by ANTLR 4.13.2
  package antlr; 
 
 import org.antlr.v4.runtime.ParserRuleContext;

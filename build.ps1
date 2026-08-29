@@ -9,6 +9,32 @@ Set-Location $PSScriptRoot
 
 New-Item -ItemType Directory -Force out\classes | Out-Null
 
+# ── Step 1: regenerate the parsers from the .g4 grammars ───────────────────
+# Without this, editing a grammar has no effect: src\antlr\*.java is committed
+# and javac would just recompile the stale copies.
+#
+# templateFragments.g4 is not listed: it is a fragment-only grammar pulled in
+# by `import templateFragments;` inside templateLexer.g4, so ANTLR resolves it
+# from the grammars\ directory and emits no file of its own.
+#
+# No -package flag: all four grammars already declare `package antlr;` in their
+# @header, and -package would emit it a second time, which does not compile.
+#
+# Grammar paths use forward slashes on purpose, so the "Generated from" comment
+# ANTLR writes into line 1 is identical whether build.ps1 or build.sh produced
+# it. Backslashes here would churn that line against every Linux build.
+$grammars = @(
+    "grammars/pythonLexer.g4",
+    "grammars/pythonParser.g4",
+    "grammars/templateLexer.g4",
+    "grammars/templateParser.g4"
+)
+
+java -jar dependencies\antlr-4.13.2-complete.jar -Dlanguage=Java -visitor -o src\antlr $grammars
+if ($LASTEXITCODE -ne 0) { throw "ANTLR failed with exit code $LASTEXITCODE" }
+
+Write-Host "ANTLR OK  -> src\antlr"
+
 $sources = Get-ChildItem -Path src -Filter *.java -Recurse | ForEach-Object { $_.FullName }
 $listFile = Join-Path $PSScriptRoot "out\sources.generated.txt"
 

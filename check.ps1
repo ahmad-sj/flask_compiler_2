@@ -6,7 +6,6 @@
 #   3. valid backends are NOT rejected (false-positive guard)
 #   4. broken templates are caught AND block generation
 #   5. Jinja control flow renders correctly (if/elif/else, for/for-else)
-#   6. add / edit / delete persist through localStorage
 #
 # Run .\build.ps1 first, then .\check.ps1
 $ErrorActionPreference = "Stop"
@@ -44,13 +43,13 @@ if ($missingPages) { Fail "missing generated pages: $($missingPages -join ', ')"
 else { Ok "all $($expectedPages.Count) expected pages generated" }
 
 # Static assets must be copied through untransformed.
-foreach ($asset in @("app.py", "style.css", "script.js")) {
+foreach ($asset in @("app.py", "style.css")) {
     if (-not (Test-Path "output\$asset")) { Fail "static asset not copied: $asset"; continue }
     $src = Get-FileHash "project\$asset" -Algorithm MD5
     $dst = Get-FileHash "output\$asset" -Algorithm MD5
     if ($src.Hash -ne $dst.Hash) { Fail "$asset was modified during copy" }
 }
-if ($failures -eq 0) { Ok "app.py / style.css / script.js copied byte-identical" }
+if ($failures -eq 0) { Ok "app.py / style.css copied byte-identical" }
 
 # compiler_output artifacts.
 foreach ($artifact in @("ast_python.json", "ast_jinja.json", "semantic_report.txt", "generation_log.txt")) {
@@ -156,27 +155,6 @@ try {
     Set-Content $appPy -Value $original -Encoding utf8 -NoNewline
     Remove-Item -Recurse -Force "tests\render_project\out", "tests\render_project\co" -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force "out\scratch" -ErrorAction SilentlyContinue
-}
-
-# ── 6. Browser runtime (add / edit / delete via localStorage) ──────────────
-Write-Host "`n[6] Browser runtime (add / edit / delete):" -ForegroundColor Cyan
-
-$node = Get-Command node -ErrorAction SilentlyContinue
-$hasJsdom = $false
-if ($node) {
-    node -e "require.resolve('jsdom')" 2>$null | Out-Null
-    $hasJsdom = ($LASTEXITCODE -eq 0)
-}
-
-if (-not $node) {
-    Write-Host "    skip - node not on PATH" -ForegroundColor DarkGray
-} elseif (-not $hasJsdom) {
-    Write-Host "    skip - jsdom not installed (run: npm install jsdom)" -ForegroundColor DarkGray
-} else {
-    # The full project must be built first; section 1 already did that.
-    $runtime = node tests\runtime-test.js "output" 2>&1 | Out-String
-    Write-Host ($runtime.TrimEnd())
-    if ($LASTEXITCODE -ne 0) { $failures++ }
 }
 
 # ── Verdict ────────────────────────────────────────────────────────────────

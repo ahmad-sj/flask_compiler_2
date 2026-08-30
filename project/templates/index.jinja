@@ -26,22 +26,4 @@
     {% endfor %}
 
 </div>
-
-<template data-item-template>
-    <div class="card" data-item>
-        <img src="__IMAGE__" alt="__NAME__" />
-        <div class="card-body">
-            <h3 class="card-title">__NAME__</h3>
-            <p class="price">$__PRICE__</p>
-            <a href="product_detail.html?id=__ID__" class="btn"> View Details </a>
-        </div>
-    </div>
-</template>
-
-<template data-empty-template>
-    <p data-empty>
-        No products yet.
-        <a href="add_product.html">Add the first one!</a>
-    </p>
-</template>
 {% endblock %}

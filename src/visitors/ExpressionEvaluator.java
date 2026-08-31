@@ -39,6 +39,8 @@ import java.util.Set;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Evaluates a Jinja expression by walking its AST.
@@ -381,11 +383,50 @@ public class ExpressionEvaluator {
     private Object formatFilter(Object value, List<Object> args) {
         String pattern = str(value);
         try {
-            return String.format(pattern, args.toArray());
+            return String.format(pattern, coerceToConversions(pattern, args));
         } catch (Exception e) {
             problems.report("format filter failed for pattern \"" + pattern + "\": " + e.getMessage());
             return pattern;
         }
+    }
+
+    /** One printf conversion: optional flags, width and precision, then the conversion letter. */
+    private static final Pattern FORMAT_SPEC =
+            Pattern.compile("%[-#+ 0,(]*\\d*(?:\\.\\d+)?([a-zA-Z%])");
+
+    /**
+     * Converts each argument to the Java type its conversion requires.
+     *
+     * String.format is strict about the argument's runtime type: %f rejects an
+     * Integer and %d rejects a Double. Extraction produces whichever type the
+     * literal in app.py happened to have, so {{ "%.2f"|format(product.price) }}
+     * threw as soon as one price was written 129 rather than 129.99 - and the
+     * catch above then put the pattern itself into the page, so a build that
+     * reported success emitted "$%.2f". The conversion decides the type here,
+     * which is what the template author meant by writing it.
+     *
+     * A pattern using explicit argument indices (%1$s) is left untouched, since
+     * positional matching no longer describes which argument each one consumes.
+     */
+    private static Object[] coerceToConversions(String pattern, List<Object> args) {
+        Object[] values = args.toArray();
+        if (pattern.indexOf('$') >= 0) return values;
+
+        Matcher spec = FORMAT_SPEC.matcher(pattern);
+        int index = 0;
+        while (spec.find() && index < values.length) {
+            char conversion = Character.toLowerCase(spec.group(1).charAt(0));
+            // %% and %n stand for themselves and consume no argument.
+            if (conversion == '%' || conversion == 'n') continue;
+
+            if (conversion == 'f' || conversion == 'e' || conversion == 'g' || conversion == 'a') {
+                values[index] = doubleOf(values[index]);
+            } else if (conversion == 'd' || conversion == 'o' || conversion == 'x') {
+                values[index] = (long) doubleOf(values[index]);
+            }
+            index++;
+        }
+        return values;
     }
 
     private String joinFilter(Object value, String separator) {

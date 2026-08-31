@@ -1,0 +1,20 @@
+no_return	has no return statement
+recursion	calls itself with no base case
+dup_route	Duplicate route
+no_flask_import	Flask is not imported
+no_app	No Flask app instance found
+no_route	No route defined
+shadow_param	shadows a function parameter
+redef_assign	already defined in scope
+shadow_builtin	shadows a Python builtin
+not_iterable	is not iterable
+unreachable	Unreachable code after return
+not_callable	is not callable
+arg_count	argument(s), got
+redirect_literal	redirect() called with a string literal
+app_run_in_route	app.run() called inside a route function
+no_subscript	does not support subscript access
+undefined_var	is not defined
+scope_escape	used outside its defining scope
+add_mismatch	Cannot add 'StringType'
+compare_mismatch	Cannot compare 'StringType'

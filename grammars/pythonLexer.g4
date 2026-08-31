@@ -61,8 +61,12 @@ LESSOREQUAL     : '<=';
 GREATEROREQUAL  : '>=';
 PLUS            : '+';
 MINUS           : '-';
-// Two-character operators come first so maximal munch cannot split '**' into
-// two STARs or '//' into two SLASHes.
+// Grouped longest-first for readability only; the order is not load-bearing.
+// ANTLR picks the rule with the LONGEST match, so '**' is a DOUBLESTAR wherever
+// that rule sits - as EQUAL : '=' above, listed before EQUALEQUAL : '==', already
+// demonstrates. Rule order decides a TIE, between two rules matching the same
+// number of characters: that is why the keywords above must precede NAME, where
+// 'def' matches DEF and NAME equally and only position resolves it.
 DOUBLESTAR      : '**';
 DOUBLESLASH     : '//';
 STAR            : '*';

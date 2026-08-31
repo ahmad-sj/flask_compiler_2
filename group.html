@@ -1,0 +1,792 @@
+<title>توزيع مناقشة الفريق</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    color-scheme: light;
+    --ground:#F7F7F5; --surface:#FFFFFF; --surface-2:#EFEFEC; --term:#F0F1EE;
+    --ink:#171614; --ink-2:#3A3833; --muted:#5D5A54; --faint:#8B8780;
+    --rule:#E3E1DC; --rule-strong:#CBC8C1;
+    --accent:#8A4B2A; --accent-soft:#F9EFE9;
+    --crit:#A5252F; --crit-soft:#FBEBEC;
+    --warn:#87590A; --warn-soft:#FBF3E1;
+    --ok:#2A6547;  --ok-soft:#E7F2EB;
+    --p1:#2C5FA0; --p2:#6E4A9E; --p3:#1D6B47; --p4:#B0512A; --p5:#1F6A7E;
+    --shadow:0 1px 2px rgba(23,22,20,.05), 0 1px 8px rgba(23,22,20,.04);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground); color:var(--ink); margin:0;
+    font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,system-ui,sans-serif;
+    font-size:16px; line-height:1.85; -webkit-font-smoothing:antialiased;
+  }
+  .rtl{direction:rtl; text-align:right}
+  .wrap{max-width:1010px; margin:0 auto; padding:0 26px 100px}
+
+  code,.f,.cmd,.out{
+    font-family:"IBM Plex Mono",ui-monospace,"Courier New",monospace;
+    direction:ltr; unicode-bidi:isolate;
+  }
+  code,.f{
+    font-size:.85em; background:var(--surface-2); border-radius:3px;
+    padding:.1em .38em; color:var(--ink-2); display:inline-block;
+  }
+  .f{border:1px solid var(--rule); white-space:nowrap}
+
+  header.mast{background:var(--surface); border-bottom:1px solid var(--rule); padding:46px 0 30px}
+  header.mast .wrap{padding-bottom:0}
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--faint); margin:0 0 14px; direction:ltr; text-align:right;
+  }
+  h1{font-weight:700; font-size:clamp(28px,4.2vw,40px); line-height:1.35; margin:0 0 14px; text-wrap:balance}
+  .standfirst{font-size:17px; color:var(--muted); max-width:64ch; margin:0 0 22px}
+  .meta{display:flex; flex-wrap:wrap; gap:6px 26px; padding-top:18px; border-top:1px solid var(--rule); font-size:14px; color:var(--muted)}
+  .meta b{color:var(--ink); font-weight:600}
+
+  nav.toc{
+    position:sticky; top:0; z-index:20; border-bottom:1px solid var(--rule);
+    background:rgba(247,247,245,.93); backdrop-filter:blur(10px);
+  }
+  nav.toc .wrap{padding:0}
+  nav.toc ul{display:flex; gap:2px; list-style:none; margin:0; padding:0; overflow-x:auto}
+  nav.toc a{
+    display:block; white-space:nowrap; padding:11px 13px 9px; font-size:14px;
+    color:var(--muted); text-decoration:none; border-bottom:2px solid transparent;
+  }
+  nav.toc a:hover{color:var(--accent); border-bottom-color:var(--rule-strong)}
+  nav.toc a:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+
+  section{padding-top:52px}
+  h2{font-weight:700; font-size:25px; line-height:1.45; margin:0 0 10px; text-wrap:balance}
+  h3{font-weight:600; font-size:17px; margin:30px 0 10px}
+  h4{
+    font-family:"IBM Plex Mono",monospace; font-weight:500; font-size:11px;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--faint);
+    margin:26px 0 10px; direction:ltr; text-align:right;
+  }
+  .lede{color:var(--muted); font-size:15.5px; margin:0 0 22px; max-width:70ch}
+  p{margin:0 0 13px}
+  ul,ol{margin:0 0 15px; padding-inline-start:24px}
+  li{margin-bottom:7px}
+  a{color:var(--accent)}
+  hr{border:0; border-top:1px solid var(--rule); margin:44px 0}
+
+  .cmd{
+    background:var(--term); border:1px solid var(--rule); border-radius:5px;
+    padding:12px 15px; margin:0 0 15px; overflow-x:auto; text-align:left;
+    font-size:12.5px; line-height:1.7; color:var(--ink); white-space:pre;
+  }
+  .cmd .p{color:var(--accent); user-select:none}
+  .cmd .c{color:var(--faint)}
+  .cmd b{color:var(--ink); font-weight:600}
+  .out{
+    border-inline-start:2px solid var(--rule-strong); padding:2px 15px 2px 0; margin:0 0 15px;
+    font-size:12px; line-height:1.66; color:var(--muted); white-space:pre; overflow-x:auto; text-align:left;
+  }
+  .out b{color:var(--ink); font-weight:600}
+  .out .g{color:var(--ok); font-weight:500}
+  .out .r{color:var(--crit); font-weight:500}
+
+  .tw{overflow-x:auto; margin:0 0 22px; border:1px solid var(--rule); border-radius:6px; background:var(--surface)}
+  table{border-collapse:collapse; width:100%; font-size:14.5px}
+  th{text-align:right; font-size:12px; font-weight:600; color:var(--faint); padding:11px 15px;
+     border-bottom:1px solid var(--rule-strong); background:var(--surface-2); white-space:nowrap}
+  td{padding:11px 15px; border-bottom:1px solid var(--rule); vertical-align:top; line-height:1.68}
+  tr:last-child td{border-bottom:0}
+  td.ltr{direction:ltr; text-align:left; font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted)}
+  td.who{font-weight:600; white-space:nowrap}
+  .num-col{font-variant-numeric:tabular-nums}
+
+  /* ---- person ---- */
+  .person{
+    border:1px solid var(--rule); border-radius:9px; background:var(--surface);
+    margin:0 0 28px; overflow:hidden; box-shadow:var(--shadow);
+    border-top:4px solid var(--pc);
+  }
+  .person > header{padding:20px 24px 18px; border-bottom:1px solid var(--rule); background:var(--surface-2)}
+  .person .nm{display:flex; flex-wrap:wrap; align-items:baseline; gap:10px 14px; margin-bottom:7px}
+  .person .idx{
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:700;
+    color:#fff; background:var(--pc); border-radius:50%;
+    width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center;
+    flex:none; direction:ltr; align-self:center;
+  }
+  .person .nm h2{margin:0; font-size:23px}
+  .person .slot{
+    margin-inline-start:auto; font-family:"IBM Plex Mono",monospace; font-size:12.5px;
+    color:var(--muted); direction:ltr; background:var(--surface);
+    border:1px solid var(--rule); border-radius:4px; padding:2px 10px; white-space:nowrap;
+  }
+  .person .role{margin:0; font-size:15px; color:var(--muted)}
+  .person .inner{padding:4px 24px 24px}
+
+  .blk{margin:22px 0 0}
+  .blk > .lbl{
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.11em;
+    text-transform:uppercase; font-weight:600; color:var(--pc);
+    direction:ltr; text-align:right; margin:0 0 10px;
+    padding-bottom:6px; border-bottom:1px solid var(--rule);
+  }
+
+  .files{margin:0; padding:0; list-style:none}
+  .files li{display:flex; gap:12px; align-items:baseline; margin-bottom:8px; font-size:14.5px; color:var(--ink-2)}
+  .files li .f{flex:none}
+
+  .qa{border-top:1px solid var(--rule); padding:14px 0 2px}
+  .qa:first-of-type{border-top:0; padding-top:4px}
+  .qa .q{font-weight:600; font-size:15.5px; margin:0 0 7px; display:flex; gap:11px; align-items:baseline}
+  .qa .q .n{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:500;
+    color:var(--faint); flex:none; direction:ltr; font-variant-numeric:tabular-nums;
+  }
+  .qa .a{margin:0 0 8px; padding-inline-start:27px; font-size:15px; color:var(--ink-2)}
+  .qa .a:last-child{margin-bottom:0}
+  .qa.hard .q .n{color:var(--crit)}
+  .qa.hard .q::after{
+    content:"صعب"; font-size:10.5px; background:var(--crit-soft); color:var(--crit);
+    border-radius:3px; padding:1px 7px; font-weight:600; align-self:center; flex:none;
+  }
+
+  .rescue{background:var(--warn-soft); border-radius:6px; padding:15px 18px; margin:0}
+  .rescue p{margin:0 0 10px; font-size:15px; color:var(--ink-2)}
+  .rescue p:last-child{margin-bottom:0}
+  .rescue .say{
+    background:var(--surface); border:1px solid var(--rule); border-radius:5px;
+    padding:10px 13px; margin:0 0 9px; font-size:14.5px; color:var(--ink);
+  }
+  .rescue .say:last-child{margin-bottom:0}
+
+  .call{border:1px solid var(--rule); border-inline-start:3px solid var(--accent); background:var(--surface);
+        border-radius:6px; padding:16px 19px; margin:0 0 20px; box-shadow:var(--shadow)}
+  .call.ok{border-inline-start-color:var(--ok)}
+  .call.crit{border-inline-start-color:var(--crit)}
+  .call.warn{border-inline-start-color:var(--warn)}
+  .call h4{margin:0 0 9px; color:var(--ink); text-align:right}
+  .call > :last-child{margin-bottom:0}
+
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--rule); color:var(--faint); font-size:13px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  @media (max-width:640px){ .person .slot{margin-inline-start:0} .qa .a{padding-inline-start:0} }
+</style>
+
+<div class="rtl">
+
+<header class="mast">
+  <div class="wrap">
+    <p class="eyebrow">‏30–40 دقيقة · 5 أعضاء · مترجم Flask إلى موقع ثابت</p>
+    <h1>توزيع مناقشة الفريق</h1>
+    <p class="standfirst">نظرة عامّة على المشروع، ثم قسم لكل عضو: ملفاته، شرح مفصّل لما يملكه، الأسئلة التي يجب أن يجيب عنها، وماذا يفعل حين لا يعرف الجواب.</p>
+    <div class="meta">
+      <span><b>العرض</b> ‏30:00</span>
+      <span><b>الأسئلة</b> ‏5–10 دقائق</span>
+      <span><b>القاعدة</b> فكرة واحدة · ملفّ على الشاشة · أمر واحد</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#global">نظرة عامّة</a></li>
+      <li><a href="#tawzee">التوزيع</a></li>
+      <li><a href="#ahmad">1 · أحمد</a></li>
+      <li><a href="#aram">2 · آرام</a></li>
+      <li><a href="#raghad">3 · رغد</a></li>
+      <li><a href="#melad">4 · ملاد</a></li>
+      <li><a href="#yousef">5 · يوسف</a></li>
+      <li><a href="#mushtarak">أسئلة مشتركة</a></li>
+      <li><a href="#qabl">قبل الدخول</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="wrap">
+
+<!-- ================= GLOBAL ================= -->
+<section id="global">
+  <h2>نظرة عامّة على المشروع</h2>
+  <p class="lede">قبل أن يتكلّم أحد، يجب أن يعرف الخمسة هذه الصفحة كاملة. أيّ سؤال عامّ قد يُوجَّه لأيٍّ منكم.</p>
+
+  <div class="call">
+    <h4>ما هو المشروع في ثلاث جمل</h4>
+    <p>مترجمٌ مكتوب بلغة <b>Java</b> فوق <b>ANTLR 4</b>، يأخذ تطبيق <b>Flask</b> — ملف <code>app.py</code> وقوالب <b>Jinja2</b> — ويُنتج <b>موقعاً ثابتاً</b> من صفحات HTML جاهزة.</p>
+      <p>لا نُنفّذ بايثون ولا نشغّل خادماً: نقرأ الشيفرة، نبني منها شجرة، نفحصها، نستخرج بياناتها، ثم نعرض القوالب مقابل تلك البيانات ونكتب الناتج على القرص.</p>
+      <p>واجهتان أماميتان (بايثون وJinja/HTML/CSS)، تلتقيان عند حدٍّ واحد اسمه <code>RouteInfo</code>، ثم واجهة خلفية واحدة تُصدر HTML.</p>
+  </div>
+
+  <h3>مراحل المترجم الستّ — يحفظها الجميع</h3>
+  <div class="cmd">app.py ──▶ <b>1</b> تحليل لفظي ونحوي ──▶ <b>2</b> بناء شجرة مجرّدة ──┐
+                                                    │
+templates/*.jinja ──▶ <b>1</b> تحليل ──▶ <b>2</b> بناء شجرة ─────────────┤
+                                                    ▼
+                             <b>3</b> تحليل دلالي لبايثون + جدول الرموز
+                                                    ▼
+                             <b>4</b> استخراج البيانات  ──▶ RouteInfo
+                                                    ▼
+                             <b>5</b> تحليل دلالي للقوالب مقابل سياق كل مسار
+                                                    ▼
+                             <b>6</b> التوليد ──▶ output/*.html</div>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>المرحلة</th><th>الملف المسؤول</th><th>صاحبها</th></tr></thead>
+    <tbody>
+      <tr><td><b>1</b> تحليل لفظي ونحوي</td><td class="ltr">grammars/*.g4 + ANTLR</td><td class="who">أحمد</td></tr>
+      <tr><td><b>2</b> بناء الشجرة المجرّدة</td><td class="ltr">AppVisitor · PythonVisitor · NodeVisitor</td><td class="who">آرام</td></tr>
+      <tr><td><b>3</b> تحليل دلالي + جدول الرموز</td><td class="ltr">SemanticAnalyzer · symbols/*</td><td class="who">رغد</td></tr>
+      <tr><td><b>4</b> استخراج البيانات</td><td class="ltr">PythonDataExtractor · RouteInfo</td><td class="who">ملاد</td></tr>
+      <tr><td><b>5</b> تحليل دلالي للقوالب</td><td class="ltr">TemplateSemanticAnalyzer</td><td class="who">رغد</td></tr>
+      <tr><td><b>6</b> التوليد</td><td class="ltr">CodeGenerator</td><td class="who">ملاد</td></tr>
+      <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;العرض داخل التوليد</td><td class="ltr">JinjaRenderer · ExpressionEvaluator</td><td class="who">يوسف</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>الأرقام التي قد تُسأل عنها</h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th>الشيء</th><th class="num-col">العدد</th><th>الملاحظة</th></tr></thead>
+    <tbody>
+      <tr><td>ملفات القواعد <code>.g4</code></td><td class="num-col">5</td><td>عائلتان: بايثون، والقوالب</td></tr>
+      <tr><td>قواعد الرموز في lexer بايثون</td><td class="num-col">52</td><td>+ INDENT/DEDENT اصطناعيان</td></tr>
+      <tr><td>قواعد الرموز في lexer القوالب</td><td class="num-col">108</td><td>موزّعة على 14 نمطاً + الافتراضي</td></tr>
+      <tr><td>الأنماط اللفظية (modes)</td><td class="num-col">14</td><td>‏+ DEFAULT_MODE = 15</td></tr>
+      <tr><td>أصناف عقد الشجرة</td><td class="num-col">98</td><td>+ 3 حاويات + الصنف الأب</td></tr>
+      <tr><td>أصناف تعيد تعريف <code>print(int)</code></td><td class="num-col">66</td><td>تعدّد الأشكال</td></tr>
+      <tr><td>الـ visitors</td><td class="num-col">4</td><td>‏1 + 50 + 1 + 73 دالّة معاد تعريفها</td></tr>
+      <tr><td>الفحوص الدلالية</td><td class="num-col">37</td><td>‏28 لبايثون + 9 للقوالب</td></tr>
+      <tr><td>جداول الرموز</td><td class="num-col">2</td><td>بايثون 13 نطاقاً · القوالب 17</td></tr>
+      <tr><td>المسارات ← الصفحات</td><td class="num-col">5 ← 12</td><td>مسار مُعامَل = صفحة لكل عنصر + صفحة فارغة</td></tr>
+      <tr><td>عيّنات الاختبار</td><td class="num-col">32 + 140 + 15</td><td><code>check.ps1</code> · <code>check-semantic.ps1</code> · <code>verify-generation.ps1</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>المخرجات — تسعة ملفات يجب أن تعرفوها بالاسم</h3>
+  <div class="cmd"><b>output/</b>              الموقع الجاهز: 12 صفحة + app.py + style.css
+
+<b>compiler_output/</b>
+  tokens.txt          سيل الرموز مع الأنماط و INDENT الاصطناعية   <span class="c">أحمد</span>
+  parse_tree.txt      شجرة الاشتقاق — 324 كيلوبايت                <span class="c">آرام</span>
+  ast_python.txt      الشجرة المجرّدة نصّاً — 15 كيلوبايت          <span class="c">آرام</span>
+  ast_jinja.txt       شجرة القوالب نصّاً                          <span class="c">آرام</span>
+  ast_python.json     كل عقدة بحقولها ومعرّفها                    <span class="c">آرام</span>
+  ast_jinja.json      المِثل للقوالب                              <span class="c">آرام</span>
+  symbol_table.txt    الجدولان معاً                               <span class="c">رغد</span>
+  semantic_report.txt الأخطاء ومشاكل العرض                        <span class="c">رغد</span>
+  generation_log.txt  المسارات المكتشفة والصفحات المكتوبة         <span class="c">ملاد</span></div>
+
+  <div class="call ok">
+    <h4>أقوى ثلاث جمل في المشروع — يقولها من يُسأل أوّلاً</h4>
+    <ol style="margin-bottom:0">
+      <li><b>«شجرتنا ليست شجرة ANTLR.»</b> ‏324 كيلوبايت مقابل 15، من نفس الملف وفي نفس التشغيل.</li>
+      <li><b>«خطأ واحد يوقف التوليد.»</b> متغيّر في قالب لم يمرّره المسار = خروج بالرمز 1 وصفر ملفات.</li>
+      <li><b>«لا شيء مثبّت على المنتجات.»</b> المجموعة والمفتاح يُقرآن من تعبير المولّد في الشيفرة.</li>
+    </ol>
+  </div>
+
+  <div class="call warn">
+    <h4>القيود التي نذكرها نحن قبل أن يكتشفها المناقش</h4>
+    <ul style="margin-bottom:0">
+      <li>القيم المُدرَجة في الصفحات <b>غير مهرَّبة</b> HTML، و<code>|safe</code> غير مدعوم.</li>
+      <li>وسم إغلاق مخالف (<code>&lt;div&gt;x&lt;/p&gt;</code>) يُقبَل ويُصلَّح بصمت.</li>
+      <li><code>{% include %}</code> و<code>{% macro %}</code> خارج النطاق المدعوم.</li>
+      <li>في بايثون: لا <code>x += 2</code>، ولا <code>break</code>/<code>continue</code>، ولا <code>class</code>، ولا قوائم استيعاب.</li>
+      <li><code>not a == b</code> تُحلَّل <code>(not a) == b</code> — انحراف معروف عن بايثون، والقاعدة الصحيحة موجودة في قواعد القوالب.</li>
+    </ul>
+  </div>
+</section>
+
+<hr>
+
+<!-- ================= TAWZEE ================= -->
+<section id="tawzee">
+  <h2>التوزيع والتوقيت</h2>
+  <p class="lede">كل قسم مستقلّ: لا يحتاج أحد أن يشرح قبل الآخر. خمس إلى ستّ دقائق لكل عضو. اجعل شرحك المُعدّ <b>أربع دقائق</b> واترك الباقي للأسئلة داخل قسمك — المناقش يقاطع، وهذا مطلوب لا مخيف.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>الوقت</th><th>العضو</th><th>القسم</th><th>الشاشة</th></tr></thead>
+    <tbody>
+      <tr><td class="ltr">0:00 – 1:00</td><td class="who">أحمد</td><td>مقدّمة: مراحل المترجم الستّ</td><td>مخطّط المسار</td></tr>
+      <tr><td class="ltr">1:00 – 6:30</td><td class="who">أحمد</td><td>القواعد والتحليل اللفظي والنحوي</td><td class="ltr">tokens.txt</td></tr>
+      <tr><td class="ltr">6:30 – 12:00</td><td class="who">آرام</td><td>شجرة الاشتقاق مقابل الشجرة المجرّدة والـ visitors</td><td class="ltr">parse_tree.txt + ast_python.txt</td></tr>
+      <tr><td class="ltr">12:00 – 18:00</td><td class="who">رغد</td><td>جدول الرموز والتحليل الدلالي</td><td class="ltr">symbol_table.txt</td></tr>
+      <tr><td class="ltr">18:00 – 24:30</td><td class="who">ملاد</td><td>الاستخراج وتوليد الصفحات</td><td class="ltr">generation_log.txt</td></tr>
+      <tr><td class="ltr">24:30 – 30:00</td><td class="who">يوسف</td><td>محرّك العرض والعرض الحي</td><td class="ltr">output/index.html</td></tr>
+      <tr><td class="ltr">30:00 – 40:00</td><td class="who">الجميع</td><td>الأسئلة</td><td>—</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<hr>
+
+<!-- ================= 1 AHMAD ================= -->
+<section id="ahmad">
+<div class="person" style="--pc:var(--p1)">
+  <header>
+    <div class="nm"><span class="idx">1</span><h2>أحمد — القواعد والتحليل اللفظي</h2><span class="slot">1:00 – 6:30</span></div>
+    <p class="role">المرحلة 1 · بناء الرموز والأنماط اللفظية · قواعد HTML وCSS وJinja</p>
+  </header>
+  <div class="inner">
+
+    <div class="blk"><p class="lbl">الملفات</p>
+      <ul class="files">
+        <li><span class="f">grammars/pythonLexer.g4</span><span>‏101 سطر · 52 قاعدة رمز · السطر 10 (INDENT/DEDENT) · 13 (superClass) · 30–50 (الكلمات المفتاحية) · 93 (NAME)</span></li>
+        <li><span class="f">grammars/templateLexer.g4</span><span>‏154 سطراً · 108 قواعد · 14 نمطاً · السطر 9–10 (دفع الأنماط) · 75 (popMode مرّتين) · 82–83 (أهمّ ترتيب)</span></li>
+        <li><span class="f">grammars/templateParser.g4</span><span>‏336 سطراً · قاعدة البداية <code>template</code>:7 · HTML 245–299 · CSS 301–336</span></li>
+        <li><span class="f">grammars/pythonParser.g4</span><span>‏274 سطراً · قاعدة البداية <code>prog</code>:9 · سلسلة الأولويات 124–175</span></li>
+        <li><span class="f">grammars/templateFragments.g4</span><span>‏118 سطراً · شظايا مشتركة · قائمة أسماء الوسوم 95–115</span></li>
+        <li><span class="f">src/antlr/Python3LexerBase.java</span><span>يولّد INDENT/DEDENT ويعالج ضمّ الأسطر داخل الأقواس</span></li>
+      </ul>
+    </div>
+
+    <div class="blk"><p class="lbl">شرح مفصّل</p>
+      <p><b>لماذا عائلتان من القواعد؟</b> لأن اللغتين تختلفان لفظياً اختلافاً حقيقياً. بايثون <b>حسّاسة للمسافات البادئة</b>: لا يمكن لقاعدة خالية من السياق أن تعبّر عن الكتل، فيولّد الـ lexer فواصلها. القوالب <b>حسّاسة للسياق</b>: نفس المحرف يعني أشياء مختلفة داخل <code>{{ }}</code>، وداخل وسم، وداخل <code>&lt;style&gt;</code>.</p>
+      <p><b>آلية الإزاحة.</b> السطر 10 يعلن <code>tokens { INDENT, DEDENT }</code> بلا جسم — رمزان بلا قاعدة — والسطر 13 يجعل الصنف الأب <code>Python3LexerBase</code>، وهو الذي يتتبّع مكدّس الإزاحة ويُصدرهما عند تغيّر العمود. عندئذٍ تقرأ قاعدة <code>block</code> في المحلّل النحوي: <code>NEWLINE INDENT stmt+ DEDENT</code> — كأيّ بنية بين أقواس. تظهر موسومة <code>synthetic</code> في <code>tokens.txt</code>.</p>
+      <p><b>آلة الأنماط.</b> في النمط الافتراضي: <code>{{</code> تدفع <code>EXPRESSION_MODE</code>، و<code>{%</code> تدفع <code>J_STMNT_MODE</code>، و<code>&lt;</code> تدفع أنماط الوسوم، و<code>&lt;style&gt;</code> تدفع أنماط CSS. أربع عائلات من الأنماط: Jinja (نمطان)، وسوم HTML (خمسة)، عنصر style (نمطان)، وCSS (خمسة).</p>
+      <p><b>لماذا <code>%}</code> تُخرج من نمطين؟</b> جملة <code>{% if</code> تدفع نمطين: <code>{%</code> تدفع نمط الجُمل، ثم كلمة <code>if</code> تدفع نمط التعابير فوقه. فإغلاقها يفكّ الاثنين — السطر 75. أمّا <code>{% endif %}</code> فتدفع نمطاً واحداً وتُغلق بـ <code>J_STMNT_END</code>.</p>
+    </div>
+
+    <div class="blk"><p class="lbl">أسئلة يجب أن تجيب عنها</p>
+
+      <div class="qa"><p class="q"><span class="n">1</span>كيف عالجتم المسافات البادئة في قاعدة خالية من السياق؟</p>
+      <p class="a">لا يمكن التعبير عنها في القاعدة، فيولّد الـ lexer فواصل الكتل. رمزان بلا قاعدة في السطر 10، وصنفٌ أب في السطر 13 يتتبّع مكدّس الإزاحة ويُصدرهما. عندئذٍ تصير الكتلة بنيةً بين فاصلين تماماً كالأقواس.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">2</span>كيف يميّز الـ lexer نصّ HTML من وسم Jinja؟</p>
+      <p class="a">بالأنماط اللفظية. <code>{{</code> تدفع نمط التعابير فيصير طقم الرموز حسابياً ومعرّفات، و<code>}}</code> تُخرج منه. وما ليس وسماً ولا قوساً يقع في <code>NORMAL_TEXT</code>. ابدأ بهذه — أقوى إجابة في المناقشة.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">3</span>كم عدد الأنماط؟</p>
+      <p class="a">أربعة عشر نمطاً مسمّى، إضافةً إلى النمط الافتراضي. شغّل <code>(Select-String grammars\templateLexer.g4 -Pattern '^mode ').Count</code> إن شُكّك في الرقم.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">4</span>ماذا يحدث لو بدّلت ترتيب قاعدتين لفظيتين؟</p>
+      <p class="a">الجواب شقّان. <b>الأول:</b> ANTLR يفضّل دائماً <em>أطول</em> تطابق، فترتيب <code>DOUBLESTAR</code> قبل <code>STAR</code> لا أثر له. والدليل داخل قاعدتنا: <code>EQUAL : '='</code> في السطر 55 يسبق <code>EQUALEQUAL : '=='</code> في السطر 57، ومع ذلك يُقرأ <code>==</code> رمزاً واحداً — ولو كان الترتيب هو الحاسم لفشلت كل مقارنة في <code>app.py</code>. <b>الثاني:</b> الترتيب يحسم <em>التعادل</em>: كلمة <code>def</code> تطابق <code>DEF</code> و<code>NAME</code> بثلاثة محارف، فتفوز الأسبق. لو نُقل <code>NAME</code> فوق الكلمات المفتاحية لصارت كلّها معرّفات ولما نجح تحليل أيّ دالّة.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">5</span>أرِني مكاناً يكسر فيه تبديل الترتيب المخرجات فعلاً.</p>
+      <p class="a">السطران 82–83 في <code>templateLexer.g4</code>: <code>STYLE_TAG_START_NAME: 'style'</code> و<code>START_TAG_NAME: HTML_TAG_NAME</code> يطابقان خمسة محارف على <code>&lt;style&gt;</code>، والقائمة تتضمّن <code>'style'</code>. لو بُدّلا لدخل <code>&lt;style&gt;</code> نمط الخصائص بدل نمط CSS، فتُحلَّل ورقة الأنماط كلّها كـ HTML ويفشل <code>base.jinja</code> بـ 14 خطأ تبدأ من السطر 9. <b>وANTLR لا يعطي تحذيراً</b> — البناء ينجح والانهيار وقت التشغيل.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">6</span>أين قواعد HTML وCSS؟</p>
+      <p class="a">داخل ملفَي القوالب لا في ملفات منفصلة: HTML في 245–299 وCSS في 301–336 من <code>templateParser.g4</code>، تغذّيهما أنماط CSS اللفظية. كتلة <code>&lt;style&gt;</code> في <code>base.jinja</code> تُنتج 7 عقد <code>CssBlock</code> وتستخدم خمسة من ستة أنواع محدِّدات.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">7</span>ما الذي لا تقبله قواعدكم عمداً؟</p>
+      <p class="a">بايثون: <code>x += 2</code>، سلاسل f، قوائم الاستيعاب، <code>class</code>، <code>with</code>، <code>lambda</code>، الوسائط الافتراضية، أكثر من مزخرف واحد، و<code>break</code>/<code>continue</code>. وJinja: <code>{% include %}</code>، <code>{% macro %}</code>، التحكّم بالمسافات. مذكورة في قسم القيود بـ <code>README.md</code>.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">8</span>هل في قواعدكم غموض (ambiguity)؟</p>
+      <p class="a">نعم، موضعان. <code>selectorList</code> في <code>templateParser.g4:316-320</code>: البديل الأول <code>selector</code> جزء من البديل الثاني <code>selector+</code>، فمحدِّدٌ واحد يُحسم بالترتيب لا بالمنطق. و<code>compareExpr</code> في 155–159 حيث البديلان الأول والثالث يطابقان تعبيراً مجرّداً؛ التنبّؤ الكامل في ANTLR يختار الصحيح لكن التسمية تصير مضلِّلة.</p></div>
+    </div>
+
+    <div class="blk"><p class="lbl">إن لم تعرف الجواب</p>
+      <div class="rescue">
+        <p class="say"><b>«القواعد أمامي، دعني أفتح الملف وأقرأ القاعدة نفسها.»</b> — افتح <code>.g4</code> فعلاً. قراءة قاعدة بصوت عالٍ إجابة مقبولة تماماً وتُظهر أنك تعرف أين تبحث.</p>
+        <p class="say"><b>«هذا يظهر في <code>tokens.txt</code>، دعني أريك.»</b> — أغلب أسئلة اللفظ يُجاب عنها بفتح ملف الرموز والإشارة إلى سطر.</p>
+        <p>وإن كان السؤال عن الشجرة أو الـ visitors فهو <b>لآرام</b>، وعن الأخطاء الدلالية فهو <b>لرغد</b>. أحِله صراحةً: «هذا قسم آرام، وهو أقدر منّي عليه.» — الإحالة الواضحة أفضل من إجابة مرتجلة.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ================= 2 ARAM ================= -->
+<section id="aram">
+<div class="person" style="--pc:var(--p2)">
+  <header>
+    <div class="nm"><span class="idx">2</span><h2>آرام — الشجرة المجرّدة والـ Visitors</h2><span class="slot">6:30 – 12:00</span></div>
+    <p class="role">المرحلة 2 · ‏98 صنف عقدة · أربعة visitors · طابع الشجرة</p>
+  </header>
+  <div class="inner">
+
+    <div class="blk"><p class="lbl">الملفات</p>
+      <ul class="files">
+        <li><span class="f">src/models/Node.java</span><span>‏84 سطراً — اقرأه كاملاً. الصنف الأب: المعرّف 21 · الاسم 22 · رقم السطر 23 · المُنشئ 25 · <code>header()</code> 58 · <code>print(int)</code> 63</span></li>
+        <li><span class="f">src/visitors/AppVisitor.java</span><span>‏30 سطراً — اقرأه كاملاً، أبسط مثال على النمط كلّه</span></li>
+        <li><span class="f">src/visitors/PythonVisitor.java</span><span>‏838 سطراً · 50 دالّة معاد تعريفها — يكفي <code>visitAssignLine</code></span></li>
+        <li><span class="f">src/visitors/NodeVisitor.java</span><span>‏1272 سطراً · 73 دالّة — اقرأ <code>visitForBlock</code></span></li>
+        <li><span class="f">src/app/TreePrinter.java</span><span>السائق: يمرّ على الجذور ويستدعي <code>print(0)</code> — السطر 38 و63</span></li>
+        <li><span class="f">src/models/**</span><span>‏102 ملف: 98 صنف عقدة + <code>App</code> و<code>Template</code> و<code>RouteInfo</code> + الصنف الأب</span></li>
+      </ul>
+    </div>
+
+    <div class="blk"><p class="lbl">شرح مفصّل</p>
+      <p><b>الفكرة.</b> ANTLR يولّد <code>BaseVisitor&lt;T&gt;</code> ونحن نتخصّص منه. أربعة visitors تبني <b>أصنافنا نحن</b>، وتُهمَل شجرة ANTLR بعد أن تُبنى الشجرة المجرّدة. الفرق في الحجم هو البرهان: من نفس الملف وفي نفس التشغيل، شجرة الاشتقاق 324 كيلوبايت والشجرة المجرّدة 15.</p>
+      <p><b>لماذا الفرق بهذا الحجم؟</b> لأن شجرة الاشتقاق فيها عقدة لكل قاعدة نحوية تطابقت، بما فيها كل القواعد الوسيطة في سلسلة الأولويات — فالمعرّف البسيط <code>x</code> يمرّ عبر عشر قواعد قبل أن يصل إلى نفسه. أمّا شجرتنا ففيها عقدة لكل بنية <b>ذات معنى</b>.</p>
+      <p><b>هوية العقدة.</b> كل عقدة تحمل ثلاثة أشياء تُسند في المُنشئ: معرّف تسلسلي، واسم يُشتقّ افتراضياً من اسم الصنف، ورقم السطر في المصدر. و<code>header()</code> يجمعها في السطر الذي تراه في <code>ast_python.txt</code>: <code>#8 multi import line (line 2)</code>.</p>
+      <p><b>الطابع نصفان:</b> كل صنف يعرض نفسه في <code>print(int level)</code> ويعاود على أبنائه بـ <code>level + 1</code>، و<code>TreePrinter</code> يمرّ على الجذور ويستدعي <code>print(0)</code>. أي أن الطباعة نفسها برهانٌ على تعدّد الأشكال: مرجعٌ من نوع <code>Node</code> يستدعي دالّة يُقرّرها الصنف الفعلي.</p>
+    </div>
+
+    <div class="blk"><p class="lbl">أسئلة يجب أن تجيب عنها</p>
+
+      <div class="qa hard"><p class="q"><span class="n">1</span>هل شجرة الاشتقاق هي نفسها الشجرة المجرّدة؟</p>
+      <p class="a">لا. الأولى فيها عقدة لكل قاعدة تطابقت، والثانية فيها عقدة لكل بنية ذات معنى. والدليل مكتوب في <code>compiler_output/</code>: ‏324 كيلوبايت مقابل 15، من نفس الملف. افتح الملفّين جنباً إلى جنب — الفارق <em>هو</em> الجواب.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">2</span>هل الشجرة من تصميمكم أم شجرة ANTLR؟</p>
+      <p class="a">من تصميمنا: 98 صنفاً تنحدر من <code>Node</code>، إضافةً إلى ثلاث حاويات تحمل عقداً ولا تكون عقداً. ولا يحتفظ أيّ صنف منها بمرجع إلى سياق ANTLR.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">3</span>لماذا visitor وليس listener؟</p>
+      <p class="a">الـ visitor يتحكّم بترتيب المرور <b>ويعيد قيمة ذات نوع</b> — وهذا ما يحتاجه بناء شجرة: زُر الأبناء، ثم أنشئ الأب وأعِده. أمّا الـ listener فيدفعه <code>ParseTreeWalker</code> ولا يعيد شيئاً، فكنّا سنحتاج مكدّساً خارجياً. ومع ذلك <b>نستخدم listener فعلاً</b> حيث يناسب نموذج الدفع: <code>SyntaxErrors</code> يرث <code>BaseErrorListener</code> لتجميع الأخطاء.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">4</span>اشرح دالّة visitor واحدة.</p>
+      <p class="a"><code>AppVisitor</code> ثلاثون سطراً كاملة: <code>visitProg</code> يُنشئ الجذر، ثم يدور على الجمل مسنداً كلّاً إلى <code>PythonVisitor.visit</code> التي تعيد <code>Node</code> فيضيفها. هذا هو النمط كلّه: visitor جذر يملك الحاوية، وvisitor متخصّص يملك العقد.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">5</span>لماذا معرّفات الأبناء أصغر من معرّفات الآباء؟</p>
+      <p class="a">لأن المعرّف يُسنَد في مُنشئ <code>Node</code>، والـ visitor يبني الأبناء قبل أن يُنشئ الأب الذي يحويهم. فالمعرّف سجلٌّ لترتيب البناء، وهو من الأسفل إلى الأعلى. في <code>ast_jinja.json</code> حلقة <code>{% for %}</code> رقمها 936 ومتغيّرها 846.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">6</span>أرِني الوراثة وتعدّد الأشكال.</p>
+      <p class="a">الصنف الأب <code>Node:16</code>، والدالّة <code>print(int)</code> معلنة في 63 ومعاد تعريفها في <b>66</b> صنفاً، ويُنادى عليها عبر مراجع من نوع <code>Node</code>. أعمق التسلسلات <code>Expression</code> بعشرين صنفاً و<code>HtmlElement</code> بثلاثة. <b>افتح صنفين قبل الدخول</b> — هذا السؤال له دائماً تابع: «أرني صنفاً يعيد تعريفها».</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">7</span>بنيتم visitor لشجرة ANTLR، فلماذا لا لشجرتكم؟</p>
+      <p class="a">لم نفعل، وهذا الجواب الصادق. لا توجد <code>accept()</code> في <code>src/models/</code>، فالمراحل الأربع التي تستهلك الشجرة تميّز بـ <code>instanceof</code> — <code>JinjaRenderer</code> سلسلة من 15 فرعاً. السبب: visitor الـ ANTLR مولَّد لنا، أمّا visitor شجرتنا فكان يتطلّب كتابة <code>accept</code> يدوياً في 98 صنفاً، ففضّلنا إنفاق الوقت على الفحوص. والثمن حقيقي: نسيان فرعٍ يجعل العقدة تسقط بصمت إلى <code>toString()</code> بدل أن يفشل التصريف.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">8</span>هل لبناء الشجرة آثار جانبية؟</p>
+      <p class="a">في جانب بايثون لا — أُزيلت عمداً والتعليق في <code>AppVisitor:11-15</code> يوثّق ذلك. أمّا في القوالب فنعم: <code>NodeVisitor</code> يملأ جدول رموز القوالب أثناء بناء العقد. الجانبان غير متماثلين، والانتقاد المكتوب في ذلك التعليق ما زال ينطبق على مسار القوالب.</p></div>
+    </div>
+
+    <div class="blk"><p class="lbl">إن لم تعرف الجواب</p>
+      <div class="rescue">
+        <p class="say"><b>«الشجرة مطبوعة أمامي — دعني أجد العقدة وأقرأها.»</b> افتح <code>ast_python.txt</code> وابحث. كل بنية في المشروع لها تمثيل مرئي هناك، وأغلب الأسئلة يُجاب عنها بالإشارة.</p>
+        <p class="say"><b>«الحقول كلّها في <code>ast_python.json</code>»</b> — إن سُئلت عن حقلٍ لا تذكره، افتح JSON وابحث عن اسم الصنف.</p>
+        <p>لا تخمّن عدد الأصناف أو الدوال — شغّل العدّ:</p>
+        <div class="cmd" style="margin-bottom:0">(Get-ChildItem src\models -Recurse -Filter *.java).Count
+(Get-ChildItem src\models -Recurse -Filter *.java | Select-String 'public String print\(int').Count</div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ================= 3 RAGHAD ================= -->
+<section id="raghad">
+<div class="person" style="--pc:var(--p3)">
+  <header>
+    <div class="nm"><span class="idx">3</span><h2>رغد — جدول الرموز والتحليل الدلالي</h2><span class="slot">12:00 – 18:00</span></div>
+    <p class="role">المرحلتان 3 و5 · ‏37 فحصاً · جدولا رموز · حجب التوليد عند الخطأ</p>
+  </header>
+  <div class="inner">
+
+    <div class="blk"><p class="lbl">الملفات</p>
+      <ul class="files">
+        <li><span class="f">src/symbols/Scope.java</span><span>‏120 سطراً · الأهمّ 36–48: <code>resolve</code> وسلسلة الآباء · <code>update</code> 56–65</span></li>
+        <li><span class="f">src/symbols/SymbolTable.java</span><span><code>enterScope</code>:15 · <code>exitScope</code>:20 · <code>define</code>:27 · <code>resolve</code>:32 (يرمي) · <code>lookup</code>:46 · <code>isDefined</code>:51</span></li>
+        <li><span class="f">src/symbols/SemanticError.java</span><span>خمسة أنواع أخطاء 5–11 · صيغة الرسالة 26–28</span></li>
+        <li><span class="f">src/visitors/SemanticAnalyzer.java</span><span>‏1361 سطراً — لا تقرأيه كلّه. ابحثي عن <code>new SemanticError</code>: ‏28 موضعاً، اقرأي خمسة</span></li>
+        <li><span class="f">src/visitors/TemplateSemanticAnalyzer.java</span><span>‏483 سطراً · تسعة فحوص · <code>checkName</code>:438 · <code>report</code>:447</span></li>
+      </ul>
+    </div>
+
+    <div class="blk"><p class="lbl">شرح مفصّل</p>
+      <p><b>البنية.</b> <code>SymbolTable</code> ← <code>Scope</code> (شجرة، لكلّ نطاق أبٌ وأبناء) ← <code>Symbol</code>. والدالّة الوحيدة التي يجب أن تحفظيها هي <code>Scope.resolve</code> في السطر 36: افحصي الخريطة المحلّية، وإن غاب الاسم فاستدعي الأب تعاودياً. <b>هذا التعاود وحده هو ما يجعل النطاق الداخلي يرى الخارجي دون العكس.</b></p>
+      <p><b>الجدولان.</b> يبني <code>SemanticAnalyzer</code> جدول بايثون كمرحلة مستقلّة بعد اكتمال الشجرة — 13 نطاقاً و27 رمزاً. ويبني <code>NodeVisitor</code> جدول القوالب أثناء بناء شجرة القالب. وبعد الإصلاح الأخير صار <code>TemplateSemanticAnalyzer</code> يحلّ كل اسم <b>عبر هذا الجدول نفسه</b>، والنطاقات التي يستعملها ظاهرة في <code>symbol_table.txt</code> تحت <code>route ... context</code>.</p>
+      <p><b>سياق القالب.</b> يُبنى من ثلاثة مصادر: أسماء متغيّرات الوحدة + الوسائط المسمّاة التي مرّرها <code>render_template</code> + اسم العنصر الذي يربطه المسار المُعامَل. ثم يُمشى على القالب وعلى كل آبائه عبر <code>{% extends %}</code> <b>بالسياق نفسه</b> — لأن هذا بالضبط ما يفعله العارض.</p>
+      <p><b>الحجب.</b> إن وُجد خطأ واحد امتنع التوليد: <code>CodeGenerator:86</code> يفحص <code>app.semanticErrors</code> ويعود بـ <code>false</code>. النتيجة: صفر ملفات، والخروج بالرمز 1.</p>
+    </div>
+
+    <div class="blk"><p class="lbl">أسئلة يجب أن تجيبي عنها</p>
+
+      <div class="qa hard"><p class="q"><span class="n">1</span>ما الأخطاء الدلالية التي يكتشفها مشروعكم؟ وكيف؟</p>
+      <p class="a">‏37 فحصاً. <b>بايثون (28):</b> متغيّر غير معرَّف · استخدام اسم خارج نطاقه · إعادة تعريف (سبعة مواضع) · حجب وسيط · حجب دالّة مضمّنة · مسار بلا <code>return</code> · تعاود بلا حالة أساس · شيفرة غير قابلة للوصول · عدد وسائط خاطئ · استدعاء ما ليس دالّة · التكرار على ما ليس قابلاً للتكرار · فهرسة ما لا يقبلها · جمع نصّ برقم · مقارنة نصّ برقم · مسار مكرّر · غياب استيراد Flask · غياب كائن التطبيق · غياب أيّ مسار · <code>redirect</code> بنصّ حرفيّ · <code>app.run()</code> داخل مسار. <b>القوالب (9):</b> قالب غير موجود · <code>extends</code> إلى ملفّ مفقود · اختبار <code>is</code> مجهول · دالّة غير مدعومة · <code>url_for()</code> بلا وسائط · <code>url_for</code> إلى مسار غير معرَّف · مرشّح مجهول · متغيّر لم يُمرَّر. <b>الآلية:</b> مرور على الشجرة مع بناء النطاقات، وكل اكتشاف يُضاف إلى قائمة تحمل النوع ورقم السطر والاسم والرسالة.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">2</span>اختبري لي بعضها الآن.</p>
+      <p class="a">عندنا 27 ملف اختبار جاهزاً، كلٌّ يعزل فحصاً واحداً:</p>
+      <div class="cmd" style="margin-top:10px">java -cp $CP app.FlaskCompiler tests\test_undefined.py out\d1 out\d2 --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_scope_error_for.py out\d1 out\d2 --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_infinite_recursion.py out\d1 out\d2 --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_wrong_arg_count.py out\d1 out\d2 --quiet-ast</div>
+      <p class="a">وتوجيه المترجم إلى ملفّ <code>.py</code> مفرد يشغّل التحليل النحوي والدلالي فقط. ولتشغيل الـ 27 معاً: <code>.\check.ps1</code>.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">3</span>ماذا لو استخدم القالب متغيّراً لم يمرّره المسار؟</p>
+      <p class="a">خطأ صريح يحجب التوليد. جرّبيها أمامهم: <code>java -cp $CP app.FlaskCompiler tests\bad_templates\undefined_context out\d1 out\d2</code> — خمسة أخطاء، كلٌّ يسمّي القالب والسطر والمتغيّر، والخروج بالرمز 1 و<b>صفر ملفات</b>. <b>هذا أقوى عرض في المشروع، ابدئي به.</b></p></div>
+
+      <div class="qa"><p class="q"><span class="n">4</span>اشرحي دوال جدول الرموز.</p>
+      <p class="a"><code>enterScope</code> يُنشئ ابناً وينزل إليه، <code>exitScope</code> يصعد للأب، <code>define</code> يُدرج في النطاق الحالي، والبحث بثلاث صيغ: <code>resolve</code> يرمي عند الغياب، <code>lookup</code> يعيد <code>null</code>، <code>isDefined</code> يعيد منطقية. والأهمّ <code>Scope.resolve</code>: محلّي ثم الأب تعاودياً.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">5</span>أيّ فحص يستعمل جدول رموز القوالب؟</p>
+      <p class="a"><code>TemplateSemanticAnalyzer</code> يحلّ <b>كل اسم</b> عبره: <code>checkName</code> في السطر 438 ينتهي بـ <code>scope.resolve(name) != null</code>. وكل مسار يفتح نطاقاً باسم <code>route X context</code>، وكل قالب وكتلة وحلقة تفتح نطاقاً ابناً — وكلّها ظاهرة في <code>symbol_table.txt</code>. أشيري إلى الشاشة: النطاق الذي ترينه هو الذي حُلّت الأسماء مقابله.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">6</span>هل يتوقّف المترجم عند أول خطأ؟</p>
+      <p class="a">لا — يجمع ثم يتوقّف عند حدود المراحل. كل الأخطاء النحوية من تحليلٍ واحد تُعرض معاً قبل محاولة بناء الشجرة، وكل الأخطاء الدلالية تُجمع على مستوى البرنامج ثم يُحجب التوليد. ما لا نفعله هو توليد مخرجات من برنامج نعرف أنه معطوب.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">7</span>ما الفرق بين <code>{{ p.nmae }}</code> و<code>{{ nosuchvar }}</code>؟</p>
+      <p class="a">الأول <b>تحذير</b> والثاني <b>خطأ يوقف البناء</b>، والتمييز مقصود. المتغيّر يُفحَص في المرحلة 5 مقابل سياق المسار وهو معلوم يقيناً وقت الفحص. أمّا المفتاح فلا يُعرف إلّا وقت العرض بعد أن تُعرف قيمة الكائن، وقد تختلف أشكال العناصر. ولاحظي أن رسالة المفتاح تذكر <b>المفاتيح المتاحة فعلاً</b>.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">8</span>ما الذي لا تكتشفونه؟</p>
+      <p class="a">ثلاثة صراحةً: وسم HTML مغلق بغير اسمه يُقبل ويُصلَّح بصمت · <code>{% block %}</code> مكرّر الاسم يُعرض مرّتين · <code>{% block %}</code> غير مغلق يعطي خطأً نحوياً عامّاً لا رسالة مخصّصة. وعمود النوع في الجدول يعطي نوعاً حقيقياً للقيم الحرفية فقط.</p></div>
+    </div>
+
+    <div class="blk"><p class="lbl">إن لم تعرفي الجواب</p>
+      <div class="rescue">
+        <p class="say"><b>«دعيني أجرّبها.»</b> — أقوى ورقة عندك. لديك 27 ملف اختبار وأمرٌ واحد. تشغيل الحالة أمام المناقش أفضل من وصفها.</p>
+        <p class="say"><b>«الرسالة نفسها ستجيب.»</b> — رسائل الأخطاء عندنا تحمل النوع والسطر والاسم والمفاتيح المتاحة. اقرئي الرسالة بصوت عالٍ.</p>
+        <p>وإن سُئلت عن فحصٍ لا تذكرين وجوده، لا تنفيه — ابحثي:</p>
+        <div class="cmd" style="margin-bottom:0">Select-String src\visitors\SemanticAnalyzer.java -Pattern 'new SemanticError' -Context 0,2</div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ================= 4 MELAD ================= -->
+<section id="melad">
+<div class="person" style="--pc:var(--p4)">
+  <header>
+    <div class="nm"><span class="idx">4</span><h2>ملاد — الاستخراج وتوليد الصفحات</h2><span class="slot">18:00 – 24:30</span></div>
+    <p class="role">المرحلتان 4 و6 · القسم الأكثر تركيزاً في الأسئلة · 5 مسارات ← 12 صفحة</p>
+  </header>
+  <div class="inner">
+
+    <div class="call" style="margin-top:20px">
+      <h4>الجملة التي تفتح بها</h4>
+      <p>«قسمي يبدأ من اللحظة التي تصبح فيها الشجرة <b>سليمة ومفحوصة</b>. لا أتعامل مع نصّ ولا رموز ولا شجرة اشتقاق. مدخلي شجرتان، ومخرجي ملفات HTML على القرص. وبينهما خطوتان: <b>استخراج</b> يحوّل شجرة بايثون إلى بيانات، و<b>عرض</b> يمشي على شجرة القالب حاملاً تلك البيانات.»</p>
+    </div>
+
+    <div class="blk"><p class="lbl">الملفات</p>
+      <ul class="files">
+        <li><span class="f">src/models/RouteInfo.java</span><span>‏69 سطراً — <b>اقرأه كاملاً</b>. أقصر ملفاتك وأهمّها: عقد التفاهم بين نصفَي المشروع</span></li>
+        <li><span class="f">src/visitors/PythonDataExtractor.java</span><span>‏377 سطراً · <code>extract</code>:60 · <code>extractRoute</code>:86 · <code>findRenderTemplate</code>:129 · <code>findItemSelection</code>:162 · <code>findGenExpression</code>:181 · <code>matchedKey</code>:207 · <code>toJavaValue</code>:248</span></li>
+        <li><span class="f">src/app/CodeGenerator.java</span><span>‏341 سطراً · <code>generate</code>:79 · البوّابة:86 · الحلقة:112 · <code>renderParameterizedRoute</code>:144 · <code>renderShellPage</code>:192 · <code>renderSinglePage</code>:207 · <code>baseContext</code>:222 · <code>urlFor</code>:248 · <code>pageName</code>:273 · <code>removeStalePages</code>:303 · <code>copyStaticAssets</code>:322</span></li>
+        <li><span class="f">src/app/FlaskCompiler.java</span><span>الأسطر 113 و141–142: أين تُستدعى مرحلتاك. ويجب أن تعرف ترتيب المراحل الستّ</span></li>
+        <li><span class="f">generation-steps.html</span><span>تتبّعك الكامل: 24 خطوة بالترتيب مع أرقام الأسطر</span></li>
+        <li><span class="f">melad.html</span><span>‏24 سؤالاً بإجابات نموذجية، تسعة منها مُختبَرة عملياً</span></li>
+      </ul>
+    </div>
+
+    <div class="blk"><p class="lbl">شرح مفصّل — المرحلة 4: الاستخراج</p>
+      <p><b>مرّتان لا مرّة، والترتيب مقصود.</b> يمرّ <code>extract</code> أولاً على كل إسنادات مستوى الوحدة فيملأ <code>moduleVars</code>، ثم على كل الدوال فيستخرج المسارات. السبب: <code>findItemSelection</code> يشترط أن تكون المجموعة التي وجدها موجودة في <code>moduleVars</code> <b>وأن تكون <code>List</code></b>. لو عُكس الترتيب لكانت الخريطة فارغة، فيفشل الشرط <b>بصمت</b>: لا خطأ، بل صفحة واحدة بلا بيانات بدل أربع. <b>هذا أخطر أنواع الأعطال: صحيح ظاهرياً، ناقص فعلياً.</b></p>
+      <p><b>قاعدة واحدة تحكم ما يُستخرج.</b> <code>toJavaValue</code> تعاودية: ما كان حرفياً استُخرج، وما عداه صار <code>null</code>. النصوص والأرقام والقوائم والقواميس تُقرأ، أمّا <code>Flask(__name__)</code> و<code>next_id()</code> و<code>request.form['x']</code> فكلّها <code>null</code> لأنها استدعاءات لا قيم ساكنة. والقواميس تُقرأ <b>كعقد</b> لا بطباعتها نصّاً وإعادة تحليلها — النسخة الأولى كانت تقسّم النصّ على <code>", "</code> فتُفسد أيّ قيمة تحتوي فاصلة.</p>
+      <p><b>اكتشاف ما يكرّره المسار.</b> من السطر <code>product = next((p for p in products if p["id"] == product_id), None)</code> نقرأ أربعة أشياء: هدف الإسناد <code>product</code> هو اسم العنصر، و<code>products</code> هي المجموعة، و<code>"id"</code> من الفهرسة هو المفتاح، و<code>product_id</code> يجب أن يكون ضمن معاملات المسار. و<code>findGenExpression</code> يبحث بعمق ≤ 6 لأن التعبير مغلَّف داخل <code>next(...)</code>. <b>لا شيء مثبّت على المنتجات</b> — سمِّ مجموعتك <code>users</code> ومفتاحك <code>uid</code> وسيعمل الأمر نفسه.</p>
+    </div>
+
+    <div class="blk"><p class="lbl">شرح مفصّل — الحدّ الفاصل</p>
+      <div class="cmd">RouteInfo {
+    name           = "detail"                      <span class="c">اسم الدالّة — وهو ما يشير إليه url_for</span>
+    urlPattern     = "/product/&lt;int:product_id&gt;"
+    params         = ["product_id"]                <span class="c">regex يتجاهل بادئة النوع</span>
+    templateName   = "product_detail.jinja"
+    context        = { product: null }
+    collectionName = "products"    <span class="c">┐</span>
+    itemVarName    = "product"     <span class="c">├─ التوسيع لكل عنصر</span>
+    itemKeyName    = "id"          <span class="c">┘</span>
+}
+
+isParameterized()  →  !params.isEmpty()
+canExpand()        →  isParameterized() &amp;&amp; الحقول الثلاثة غير فارغة
+rendersTemplate()  →  templateName != null</div>
+      <p><b>لماذا <code>canExpand</code> منفصلة عن <code>isParameterized</code>؟</b> لأن مساراً قد يأخذ معاملاً ومع ذلك لا نعرف على ماذا نكرّر — إن لم يكن جسمه على الشكل الذي نفهمه. عندئذٍ يُسجَّل تحذير واضح وتُولَّد صفحة واحدة بلا بيانات، بدل أن نفشل أو نصمت.</p>
+    </div>
+
+    <div class="blk"><p class="lbl">شرح مفصّل — المرحلة 6: التوليد</p>
+      <p><b>البوّابة أولاً.</b> السطر 86 يفحص <code>app.semanticErrors</code> ويعود بـ <code>false</code> إن وُجد خطأ. ولأنها <b>قبل</b> خطوة الحذف وقبل أيّ كتابة، فبناءٌ فاشل لا يمسّ مخرجات بناءٍ ناجح سابق — جُرّب: 12 صفحة قبل، 12 صفحة بعد بناء معطوب.</p>
+      <p><b>أربعة قرارات لكل مسار.</b> لا يعرض قالباً (<code>delete</code>) ← يُتخطّى · القالب غير موجود ← تحذير · مُعامَل ← صفحة لكل عنصر + صفحة فارغة · عادي ← صفحة واحدة.</p>
+      <p><b>بناء السياق.</b> ابدأ ببيانات الوحدة ثم دع وسائط <code>render_template</code> تطغى — <b>لكن</b> وسيطاً قُيّم إلى <code>null</code> لا يعني «القيمة عدم» بل «لم نستطع تقييمه ساكناً»، فلو كتبناه فوق متغيّر وحدة موجود لأبدلنا معلومةً بجهل. الشرط في السطر 222 يقول: اكتب إن كانت لديك قيمة حقيقية، أو إن لم يكن هناك ما تكتب فوقه أصلاً.</p>
+      <p><b>الصفحة الفارغة.</b> تُنفَّذ بعد حلقة العناصر لا قبلها، يُربط فيها العنصر بخريطة فارغة فتخرج الحقول خالية، وتُرفع راية <code>suppressProblems</code> داخل <code>try/finally</code> لأن كل بحث عن مفتاح في خريطة فارغة سيُبلَّغ عنه — تحذيرات متوقّعة، فهي ضجيج لا اكتشاف.</p>
+      <p><b>مصدر واحد لأسماء الملفات.</b> <code>pageName</code> في السطر 273 هو المكان الوحيد الذي تُصنع فيه الأسماء، و<code>urlFor</code> يستدعيه. لهذا <b>لا يمكن أن يشير رابط إلى ملفّ غير موجود بسبب اختلاف تسمية</b> — وهذه إجابة جاهزة لسؤال «كيف تضمنون صحّة الروابط؟».</p>
+      <p><b>حذف الصفحات القديمة.</b> السطر 303: نحذف كل <code>*.html</code> لم يُكتب في هذا التشغيل. ونحذف <b>ما لم يُكتَب</b> بدل مسح المجلّد أوّلاً — فلا توجد لحظة يكون فيها المُخرَج فارغاً، وفشلٌ في منتصف التوليد يترك صفحات البناء السابق سليمة.</p>
+    </div>
+
+    <div class="blk"><p class="lbl">أسئلة يجب أن تجيب عنها</p>
+
+      <div class="qa"><p class="q"><span class="n">1</span>هل تنفّذون شيفرة بايثون؟</p>
+      <p class="a">لا. لا مفسّر ولا bytecode ولا <code>exec</code>. نمشي على الشجرة ونقرأ القيم الحرفية عبر <code>toJavaValue</code>. وما لا يُعرف ساكناً يصير <code>null</code> ويُبلَّغ عنه.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">2</span>كم صفحة ولماذا؟</p>
+      <p class="a">اثنتا عشرة. <code>index</code> و<code>add</code> صفحة لكلٍّ. <code>detail</code> و<code>edit</code> مُعامَلان فكلٌّ يعطي أربع منتجات + صفحة فارغة = خمس. <code>delete</code> لا يعرض قالباً فيُتخطّى. ‏1+1+5+5 = 12.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">3</span>كيف يعرف مسارٌ ذو معامل ما الذي يكرّره؟</p>
+      <p class="a">يقرأ تعبير المولّد في جسمه: <code>findGenExpression</code> يجده بعمق ≤ 6، و<code>findItemSelection</code> يقرأ المجموعة واسم العنصر، و<code>matchedKey</code> يقرأ المفتاح من المقارنة ويشترط أن يكون الطرف الآخر ضمن معاملات المسار. الدليل في السجلّ: <code>[per-item over products]</code> — الاسم مقروء لا مكتوب.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">4</span>ما هو <code>RouteInfo</code> ولماذا يوجد؟</p>
+      <p class="a">هو الحدّ الفاصل بين الواجهتين، و<b>الشيء الوحيد</b> الذي يستقبله المولّد من جانب بايثون. لا يرى المولّد عقدة واحدة من شجرة بايثون — والدليل أن <code>JinjaRenderer</code> و<code>ExpressionEvaluator</code> و<code>CodeGenerator</code> لا تستورد أيّ صنف من <code>models.python</code>: صفر استيرادات. وهذا ما يبقي النصفين مستقلّين.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">5</span>لماذا يستخرج <code>extract()</code> متغيّرات الوحدة قبل المسارات؟</p>
+      <p class="a">لأن اكتشاف ما يكرّره المسار يشترط أن تكون المجموعة موجودة في <code>moduleVars</code> وأن تكون <code>List</code>. ولو عُكس الترتيب لفشل الشرط بصمت: <code>collectionName</code> يبقى <code>null</code>، فتصير <code>canExpand()</code> خاطئة، فتُولَّد صفحة واحدة بلا بيانات بدل خمس — والبناء «ينجح» ويخرج بالرمز 0.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">6</span>سجلّك يقول <code>[app, products]</code>. ما قيمة <code>app</code>؟</p>
+      <p class="a"><code>null</code>، لأن <code>Flask(__name__)</code> استدعاء لا قيمة ساكنة. <b>ولماذا نبقيه إذاً؟</b> لأن الخريطة تجيب «ما الأسماء المعرَّفة على مستوى الوحدة» وهو سؤال يختلف عن «ما قيمها». رغد تستعمل مجموعة المفاتيح لبناء سياق القالب، فلو أسقطنا <code>app</code> لصار قالبٌ يذكره خطأً غير معرَّف. الاسم موجود والقيمة مجهولة، وهذان أمران مختلفان.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">7</span>اشرح الشرط في <code>baseContext</code>.</p>
+      <p class="a">وسيطٌ قُيّم إلى <code>null</code> لا يعني «القيمة عدم» بل «لم نستطع تقييمه ساكناً». فلو كتبناه فوق متغيّر وحدة موجود لأبدلنا معلومةً بجهل. الشرط: اكتب إن كانت لديك قيمة حقيقية، أو إن لم يكن هناك ما تكتب فوقه. مثال: <code>product=product</code> يُقيَّم إلى <code>null</code> لأنه محلّي، ثم يستبدله <code>renderParameterizedRoute</code> بالعنصر الحقيقي.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">8</span>ماذا يحدث لمحتوى في قالب ابن خارج أيّ <code>{% block %}</code>؟</p>
+      <p class="a"><b>يُحذف بصمت.</b> لأن العارض إن وجد <code>{% extends %}</code> جمع كتل الابن ثم عرض <b>الأب</b>، ولا يستدعي عرض عقد الابن إطلاقاً. مُختبَر عملياً: أضفنا فقرة خارج الكتل فلم تظهر في المخرجات ولم يُبلَّغ عنها. وهذا سلوك Jinja الحقيقي نفسه.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">9</span>منتجان لهما نفس الـ <code>id</code>؟</p>
+      <p class="a">الملفّ يُكتب مرّتين والأخير يفوز — فقدان صامت. مُختبَر: بمنتجين بمعرّف 1 صار العدّاد يقول 10 والملفات ثلاثة، و<code>product_detail_1.html</code> يحمل بيانات الثاني. نحن نعامل المفتاح كأنه فريد لأن Flask يعامله كذلك — <code>/product/1</code> لا يمكن أن يشير إلى شيئين — لكننا لا نتحقّق. الفحص الصحيح مكانه عند رغد.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">10</span>احذف منتجاً وأعد التوليد.</p>
+      <p class="a">تُحذف صفحاته. كان هذا عيباً حقيقياً — المولّد يكتب ولا يحذف — وأصلحناه في <code>removeStalePages</code> بالسطر 303: نحذف كل صفحة لم تُكتب في هذا التشغيل. والاختبارات لم تكتشفه سابقاً لأن <code>check.ps1</code> يمسح المجلّد قبل كل تشغيل، أي أن التنظيف كان موجوداً في المكان الخطأ.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">11</span>كان <code>{{ "%.2f"|format(price) }}</code> يطبع <code>%.2f</code>. لماذا؟</p>
+      <p class="a">كان، وأُصلح. <code>String.format</code> في جافا صارمة في نوع الوسيط: <code>%f</code> يرفض <code>Integer</code>. والمستخرج يعطي النوع الذي كتبه المؤلّف: <code>129.99</code> تصير <code>Double</code> و<code>129</code> تصير <code>Integer</code>. فبمجرّد كتابة سعر بلا فاصلة عشرية كان الاستثناء يقع وكتلة <code>catch</code> تعيد النمط نفسه. الإصلاح في <code>coerceToConversions</code>: نقرأ محوّلات النمط ونحوّل كل وسيط إلى النوع الذي يطلبه محوّله. <b>المحوّل يقرّر النوع</b>، وهو ما قصده كاتب القالب.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">12</span>هل التوليد ثابت؟ وهل إعادة التوليد صحيحة؟</p>
+      <p class="a">نعم، ونثبته بأمر واحد: <code>.\verify-generation.ps1</code> — خمسة عشر فحصاً. على التوليد: اكتمال الصفحات، أمانة البيانات، <b>سلامة كل رابط محلّي</b>، الوراثة، عدد دورات الحلقة، تطابق الملفات المنسوخة. وعلى إعادة التوليد ستّ خصائص منفصلة: الثبات، الأدنوية، الإضافة، التعديل، الحذف، والحتمية. كلّها تمرّ.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">13</span>لو غيّرتُ أسلوب كتابة المسار، ماذا يتغيّر عندك؟</p>
+      <p class="a">ابدأ بما <b>لا</b> يتغيّر: <code>RouteInfo</code> ولا <code>CodeGenerator</code> ولا <code>JinjaRenderer</code> — كلّها تقرأ الحقول ولا تعرف من أين جاءت. ويتغيّر <code>findItemSelection</code> وحدها. اكتشافُ الشكل معزول في دالّة واحدة، ولهذا السبب بالذات جعلنا <code>RouteInfo</code> كائناً مستقلّاً بدل تمرير عقد الشجرة إلى المولّد: دعم شكل جديد يمسّ دالّة واحدة لا خمسة ملفات.</p></div>
+    </div>
+
+    <div class="blk"><p class="lbl">إن لم تعرف الجواب</p>
+      <div class="rescue">
+        <p class="say"><b>«ارجع إلى الحدّ.»</b> كل سؤال في التوليد يمرّ عبر <code>RouteInfo</code>. إن ضِعت قل: «مدخلي هو هذه الحقول الثمانية، وما قبلها ليس قسمي» — ثم اشرح ما تفعله بها.</p>
+        <p class="say"><b>«السجلّ يجيب.»</b> <code>generation_log.txt</code> يذكر المسارات المكتشفة وكل صفحة كُتبت وحجمها. افتحه وأشِر.</p>
+        <p class="say"><b>«دعني أشغّل الفحص.»</b> <code>.\verify-generation.ps1</code> — خمسة عشر فحصاً في نصف دقيقة. لو سُئلت عن خاصّية لا تذكرها، الاحتمال أنها مفحوصة هناك.</p>
+        <p><b>ولا تعتذر عن القيود.</b> أربعة منها مُختبَرة وتعرف مخرجاتها الحقيقية: عدم الهروب، الوسم المخالف، المحتوى خارج الكتل، المعرّف المكرّر. اذكر القيد ثم اذكر <b>مكان الإصلاح بالسطر</b> — هذا يقلب النقص إلى دليل فهم.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ================= 5 YOUSEF ================= -->
+<section id="yousef">
+<div class="person" style="--pc:var(--p5)">
+  <header>
+    <div class="nm"><span class="idx">5</span><h2>يوسف — محرّك العرض والعرض الحي</h2><span class="slot">24:30 – 30:00</span></div>
+    <p class="role">من الشجرة المجرّدة إلى HTML · الوراثة · الحلقات · تقييم التعابير</p>
+  </header>
+  <div class="inner">
+
+    <div class="blk"><p class="lbl">الملفات</p>
+      <ul class="files">
+        <li><span class="f">src/visitors/JinjaRenderer.java</span><span>‏468 سطراً — ملفّك الأساسي · <code>render</code>:65 · <code>renderTemplate</code>:81 · <code>renderNode</code>:149 · <code>renderIf</code>:223 · <code>renderFor</code>:261 · <code>renderBlock</code>:358 · <code>renderHtmlElement</code>:370</span></li>
+        <li><span class="f">src/visitors/ExpressionEvaluator.java</span><span>‏711 سطراً · <code>eval</code>:94 · <code>resolveName</code>:134 · <code>evalPrimary</code>:169 · <code>member</code>:216 · <code>callFunction</code>:262 · <code>applyFilter</code>:327 · <code>truthy</code>:630</span></li>
+        <li><span class="f">output/index.html</span><span>في المتصفّح، و<code>project/templates/index.jinja</code> بجانبه</span></li>
+      </ul>
+    </div>
+
+    <div class="blk"><p class="lbl">شرح مفصّل</p>
+      <p><b>الفكرة المفتاحية.</b> نمشي على شجرة القالب مباشرةً ونُصدر HTML — <b>لا نُشغّل أيّ تعبير نمطي على نصّ القالب</b>. النسخة السابقة كانت تعيد الشجرة نصّاً بـ <code>toString()</code> ثم تطبّق regex عليه، فكانت تُسقط كلّ فرع <code>{% else %}</code> بصمت لأن التعابير النمطية لا تعبّر عن التداخل. المشي على العقد يعني أن البنية التي وجدها المحلّل هي البنية التي تُعرَض. التعليق في السطور 34–43 يوثّق ذلك.</p>
+      <p><b>التوزيع.</b> <code>renderNode</code> في السطر 149 يوزّع حسب نوع العقدة: النصّ يُضاف كما هو · <code>{{ }}</code> يُقيَّم ثم يُضاف ناتجه · عنصر HTML يفتح وسمه ويكتب خصائصه ثم يعاود على جسمه ثم يغلق · والكتل لكلٍّ دالّة خاصّة.</p>
+      <p><b>الوراثة: الابن يُجمَع والأب يُعرَض.</b> نجد <code>{% extends %}</code>، ثم نجمع كتل الابن بـ <code>putIfAbsent</code> حتى يفوز الابن الأعمق، ثم نستدعي عرض <b>الأب</b> حاملين تلك الخريطة. فحين يصل الأب إلى كتلة يستبدلها بنسخة الابن. والدوران محميّ بمكدّس <code>inheritanceStack</code>.</p>
+      <p><b>الحلقة.</b> نقيّم التعبير المُكرَّر عليه ونحوّله إلى قائمة (قائمة كما هي · قاموس ← مداخل · نصّ ← محارف). فإن كانت فارغة عرضنا فرع <code>{% else %}</code>. وإلّا دُرنا على العناصر، ولكلّ دورة <b>ننسخ السياق</b> ونربط متغيّر الحلقة ونضيف كائن <code>loop</code>، ثم نعرض الجسم <b>حتى أول فرع</b>.</p>
+    </div>
+
+    <div class="blk"><p class="lbl">أسئلة يجب أن تجيب عنها</p>
+
+      <div class="qa"><p class="q"><span class="n">1</span>كيف تتحوّل الشجرة المجرّدة إلى HTML؟</p>
+      <p class="a">بمرور واحد على العقد. <code>renderNode</code> يوزّع حسب النوع، والناتج يُبنى في <code>StringBuilder</code> واحد ثم يُكتب ملفّاً. الصفحة تُبنى كاملةً في الذاكرة قبل أن تُكتب — لا كتابة تدريجية.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">2</span>كيف تعمل وراثة القوالب؟</p>
+      <p class="a">الابن أولاً ثم الأب مع خريطة تجاوز. نجمع كتل الابن بـ <code>putIfAbsent</code> — فالاسم الذي حجزه ابنٌ أعمق لا يُستبدل، وبذلك تعمل الوراثة على أكثر من مستوى — ثم نعرض <b>الأب</b> حاملين الخريطة. والنتيجة أن <code>index.jinja</code> وهو 30 سطراً يُنتج صفحة كاملة فيها ترويسة <code>base.jinja</code> وقائمتها وأنماطها.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">3</span>أين تُنفَّذ <code>{% for %}</code> وكيف تعمل <code>{% else %}</code> معها؟</p>
+      <p class="a"><code>renderFor</code> في السطر 261. إن كانت القائمة فارغة بحثنا عن <code>ElseBlock</code> وعرضناه — وهذا سلوك Jinja الحقيقي. وإلّا دُرنا وننسخ السياق كل دورة لئلّا يتسرّب متغيّر الحلقة، ونعرض الجسم بـ <code>renderUntilBranch</code> التي تتوقّف عند أول <code>elif</code>/<code>else</code> — لأن <code>{% else %}</code> في قاعدتنا <b>ابن</b> لجسم الحلقة لا شقيق لها، فلو عُرض الجسم كاملاً لطُبع في كل دورة.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">4</span>كيف تُقيَّم <code>{{ }}</code>؟</p>
+      <p class="a">توزيع على نحو عشرين نوع عقدة: الذرّات، ثم سلاسل الوصول (<code>product.name</code>)، ثم المعاملات والمرشّحات. والمعرّف يُحلّ مقابل خريطة السياق؛ والاسم المجهول يعطي <code>null</code> ويُبلَّغ عنه بدل أن يتسرّب اسم المتغيّر إلى الصفحة.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">5</span>كيف يُميَّز <code>url_for(...)</code> عن متغيّر اسمه <code>url_for</code>؟</p>
+      <p class="a"><code>evalPrimary</code> في السطر 169 يفحص أولاً: هل الذرّة معرّف <b>ويتبعها استدعاء مباشرةً</b>؟ إن كان كذلك عوملت كدالّة، وإلّا بُحث عنها كمتغيّر. لولا هذا الفحص لبحث المقيّم عن متغيّر اسمه <code>url_for</code> فلم يجده وأبلغ عن اسم غير معرَّف.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">6</span>ما المرشّحات المدعومة وكيف يُتحقَّق منها؟</p>
+      <p class="a">أربعة عشر، معرّفة في <code>SUPPORTED_FILTERS</code> ومنفّذة في <code>applyFilter</code>. و<b>المحلّل الدلالي يتحقّق من الاسم مقابل المجموعة نفسها</b>، فالمرشّح المجهول خطأ يحجب البناء ورسالته تعدّد المتاح. ولهذا لو أضفت مرشّحاً جديداً وجب أن تبدأ بالمجموعة لا بالـ <code>switch</code>.</p></div>
+
+      <div class="qa hard"><p class="q"><span class="n">7</span>هل مخرجاتكم آمنة؟ ماذا لو كان اسم منتج <code>&lt;script&gt;</code>؟</p>
+      <p class="a">سيُكتب كما هو ويُنفَّذ. لا نُهرّب HTML: السطران 161 و443 يُضيفان القيمة مباشرةً — في جسم العنصر وفي قيم الخصائص معاً. يوجد مرشّح <code>escape</code> لكنه اختياري، أي عكس Jinja حيث الهروب افتراضي. قيد موثّق، ولا نتعامل مع مدخلات غير موثوقة — كل البيانات مكتوبة بيد المطوّر وقت البناء — لكنه افتراض لا ضمانة. والنصف الأخطر هو <b>443</b> لأن نسيانه يترك <code>href="javascript:..."</code> ممكناً.</p></div>
+
+      <div class="qa"><p class="q"><span class="n">8</span>ماذا يُفقَد في التحويل؟</p>
+      <p class="a">ثلاثة: اسم وسم الإغلاق (نعيد كتابة اسم وسم الفتح، فالوسم المخالف يُصلَّح بصمت) · المسافات الأصلية بين العقد (قاعدة <code>NORMAL_TEXT</code> تستبعد أسطر الانتقال فنعيد وصل الإخوة بسطر جديد) · وهروب HTML.</p></div>
+    </div>
+
+    <div class="blk"><p class="lbl">إن لم تعرف الجواب</p>
+      <div class="rescue">
+        <p class="say"><b>«الصفحة أمامنا، دعني أريك.»</b> — أقوى ورقة عندك لأن قسمك مرئيّ. افتح الصفحة في المتصفّح واعرض <code>index.jinja</code> بجانبها: ثلاثون سطراً من القالب أنتجت هذه الصفحة الكاملة.</p>
+        <p class="say"><b>«اضغط View Details.»</b> — الانتقال الفعلي إلى <code>product_detail_1.html</code> يثبت أن <code>url_for</code> صار رابطاً يعمل، بلا شرح.</p>
+        <p>وإن كان السؤال عن <b>كيف تُختار</b> الصفحة أو اسمها فهو <b>لملاد</b> (المولّد)، وعن <b>لماذا</b> الشجرة بهذا الشكل فهو <b>لآرام</b>. أحِله صراحةً.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<hr>
+
+<!-- ================= SHARED ================= -->
+<section id="mushtarak">
+  <h2>أسئلة قد تُطرح على أيٍّ منكم</h2>
+
+  <div class="qa"><p class="q"><span class="n">1</span>ما مراحل مترجمكم بالترتيب؟</p>
+  <p class="a">تحليل لفظي ← تحليل نحوي ← بناء شجرة مجرّدة ← تحليل دلالي مع بناء جدول الرموز ← استخراج البيانات ← توليد الشيفرة. ستّ مراحل صريحة في <code>FlaskCompiler</code>. <b>يحفظها الخمسة.</b></p></div>
+
+  <div class="qa"><p class="q"><span class="n">2</span>كيف أبني وأشغّل؟</p>
+  <div class="cmd" style="margin-top:10px"><span class="p">PS></span> .\build.ps1
+<span class="p">PS></span> $CP = "out\classes;dependencies\antlr-4.13.2-complete.jar"
+<span class="p">PS></span> java -cp $CP app.FlaskCompiler --print-all
+<span class="p">PS></span> .\check.ps1
+<span class="p">PS></span> .\verify-generation.ps1</div>
+  <p class="a"><code>build.ps1</code> يعيد توليد المحلّلات من <code>.g4</code> أولاً ثم يصرّف. <b>لا تشغّل <code>javac</code> وحده</b> — الملفات المولَّدة مضافة إلى المستودع فالتصريف وحده يعيد بناء النسخة القديمة.</p></div>
+
+  <div class="qa"><p class="q"><span class="n">3</span>ما رموز الخروج؟</p>
+  <p class="a">‏0 نجاح · 1 مشكلة ترجمة (نحوية أو دلالية) · 2 فشل قراءة أو كتابة.</p></div>
+
+  <div class="qa"><p class="q"><span class="n">4</span>ما الفرق بين خطأ نحوي وخطأ دلالي عندكم؟</p>
+  <p class="a">قوس ناقص = خطأ <b>نحوي</b>: يتوقّف عند التحليل، لا تُبنى شجرة، صفر ملفات. أمّا <code>prin</code> بدل <code>print</code> فليس خطأً نحوياً إطلاقاً — <code>prin</code> رمز <code>NAME</code> سليم فيُحلَّل بنجاح، ويُكتشف في المرحلة التالية: «متغيّر غير معرَّف». <b>اللفظ والنحو لا يمكنهما كشف خطأ في اسم — الدلالة وحدها تستطيع.</b></p></div>
+
+  <div class="qa"><p class="q"><span class="n">5</span>كم اختباراً عندكم وماذا يثبت؟</p>
+  <p class="a">ثلاث مجموعات. <code>check.ps1</code>: خمس مجموعات — المشروع الكامل، 27 واجهة معطوبة تُكتشف <b>وتحجب التوليد</b>، 3 واجهات سليمة يجب ألّا تُرفض (حارس الإيجابيات الكاذبة)، مشروعا قوالب معطوبة، وتدفّق تحكّم Jinja. و<code>check-semantic.ps1</code>: <b>140 عيّنة</b> تثبت أن كلّاً من الفحوص الـ 28 يُطلَق بخمسة برامج مختلفة لا ببرنامج واحد. و<code>verify-generation.ps1</code>: خمسة عشر فحصاً على صحّة المخرجات نفسها.</p></div>
+
+  <div class="qa"><p class="q"><span class="n">6</span>ما أكبر قيد في مشروعكم؟</p>
+  <p class="a">أن كلّ واجهة تحلّل <b>جزءاً</b> مقصوداً من لغتها لا اللغة كاملة — بقدر ما يلزم لواجهة Flask خلفية وقوالبها. وقسم القيود في <code>README.md</code> يعدّدها بصراحة. <b>استشهدوا به بدل أن تُضبطوا به.</b></p></div>
+</section>
+
+<hr>
+
+<!-- ================= BEFORE ================= -->
+<section id="qabl">
+  <h2>قبل الدخول</h2>
+
+  <div class="call">
+    <h4>شغّلوا هذا معاً قبل المناقشة بساعة</h4>
+    <div class="cmd" style="margin:10px 0 0"><span class="p">PS></span> Remove-Item -Recurse -Force output, compiler_output
+<span class="p">PS></span> .\build.ps1
+<span class="p">PS></span> $CP = "out\classes;dependencies\antlr-4.13.2-complete.jar"
+<span class="p">PS></span> java -cp $CP app.FlaskCompiler --print-all
+<span class="p">PS></span> .\check.ps1
+<span class="p">PS></span> .\verify-generation.ps1
+<span class="p">PS></span> start output\index.html</div>
+  </div>
+
+  <div class="call">
+    <h4>تبويبات مفتوحة لكل عضو</h4>
+    <ul style="margin-bottom:0">
+      <li><b>أحمد</b> — <code>tokens.txt</code> + <code>templateLexer.g4</code></li>
+      <li><b>آرام</b> — <code>parse_tree.txt</code> + <code>ast_python.txt</code> + صنفان يعيدان تعريف <code>print</code></li>
+      <li><b>رغد</b> — <code>symbol_table.txt</code> + <code>semantic_report.txt</code> + مجلّد <code>tests\</code></li>
+      <li><b>ملاد</b> — <code>generation_log.txt</code> + <code>RouteInfo.java</code> + <code>generation-steps.html</code></li>
+      <li><b>يوسف</b> — <code>output/index.html</code> في المتصفّح + <code>index.jinja</code> بجانبها</li>
+    </ul>
+  </div>
+
+  <div class="call crit">
+    <h4>أخطاء قد تقعوا فيها بأنفسكم</h4>
+    <ul style="margin-bottom:0">
+      <li><b><code>javac</code> بدل <code>.\build.ps1</code></b> بعد تعديل قاعدة — التعديل بلا أثر.</li>
+      <li><b>تمرير أمر جافا قيد التشغيل إلى <code>Select-Object -First N</code></b> — PowerShell ينهي الأنبوب فيقتل العملية ويعطي الرمز 255، فيبدو كأن المترجم انهار.</li>
+      <li><b>تعديل ملفّ جافا بـ <code>Set-Content -Encoding utf8</code></b> — يضيف علامة ترتيب بايتات فيرفضها <code>javac</code>.</li>
+      <li><b><code>$CP</code> فارغ</b> — فتحتم تبويب طرفية جديداً. أعيدوا سطر <code>$CP</code>.</li>
+      <li><b>عدم مسح <code>output</code></b> قبل العرض — قد تظهر صفحة من بناء سابق.</li>
+    </ul>
+  </div>
+
+  <div class="call ok">
+    <h4>ثلاث قواعد للإجابة — للخمسة</h4>
+    <ul style="margin-bottom:0">
+      <li><b>لا تخمّنوا.</b> «لا أعرف، لكنّي أعرف أين أبحث — الملف كذا» إجابة مقبولة. التخمين الخاطئ يفتح باباً لا يُغلق.</li>
+      <li><b>اعترفوا بالقيود أولاً.</b> كلّها موثّقة في <code>README.md</code>. ذكرها قبل أن يكتشفها المناقش يحوّلها من عيب إلى دليل فهم.</li>
+      <li><b>أحيلوا ما ليس قسمكم صراحةً.</b> «هذا قسم رغد وهي أقدر عليه» أقوى من إجابة مرتجلة تفتح أسئلة لا تنتهي.</li>
+    </ul>
+  </div>
+
+  <div class="call ok">
+    <h4>سطر الإنقاذ</h4>
+    <div class="cmd" style="margin:8px 0 0">git checkout -- . ; .\build.ps1 ; java -cp $CP app.FlaskCompiler --print-all</div>
+    <p style="margin-top:12px">يستعيد كل ملفّ عُدّل، ويعيد البناء من القواعد، ويعيد توليد كل المخرجات. أربعون ثانية، ويُنقذ من أيّ خطأ في عرض حيّ.</p>
+  </div>
+</section>
+
+<footer>
+  مبنيّ على قراءة الشيفرة الفعلية · أرقام الأسطر مطابقة للحالة الحالية بعد الإصلاحات الأربعة · كل سلوك مذكور هنا جُرّب على المشروع
+</footer>
+
+</div>
+</div>

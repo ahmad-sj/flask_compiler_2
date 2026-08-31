@@ -110,9 +110,11 @@ public final class TreePrinter {
                 "not built - the backend did not parse, so analysis never ran"));
 
         out.append(renderSymbolTable(
-                "SYMBOL TABLE 2 of 2 - TEMPLATES (AST construction)", templateTable,
-                "Built by NodeVisitor while constructing the template ASTs."
-                        + " Holds {% block %} names and {% for %} loop variables.",
+                "SYMBOL TABLE 2 of 2 - TEMPLATES", templateTable,
+                "Opened by NodeVisitor while constructing the template ASTs ({% block %} names,"
+                        + " {% for %} loop variables), then extended by TemplateSemanticAnalyzer,"
+                        + " which resolves every name in a template against the 'route ... context'"
+                        + " scopes below.",
                 "not built"));
 
         return out.toString();

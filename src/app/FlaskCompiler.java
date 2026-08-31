@@ -101,10 +101,6 @@ public class FlaskCompiler {
         List<SemanticError> errors = analyzer.analyze(app);
         app.semanticErrors = errors;
 
-        // The symbol tables are dumped here rather than with the AST dumps
-        // above, because the Python one does not exist until analyze() has run.
-        writeSymbolTables(config, log, analyzer.getSymbolTable(), symbolTable);
-
         if (errors.isEmpty()) {
             log.info("No semantic errors found.");
         } else {
@@ -123,7 +119,13 @@ public class FlaskCompiler {
         List<SemanticError> templateErrors = config.isSingleFileMode()
                 ? new ArrayList<>()
                 : new TemplateSemanticAnalyzer(templates, extractor.getRoutes(),
-                        extractor.getModuleVars().keySet()).analyze();
+                        extractor.getModuleVars().keySet(), symbolTable).analyze();
+
+        // Both tables are dumped here, after every phase that writes to one has
+        // run: the Python table does not exist until analyze() has, and the
+        // template table gains the scopes phase 5 resolves against. Dumping any
+        // earlier would report a table the checks had not finished using.
+        writeSymbolTables(config, log, analyzer.getSymbolTable(), symbolTable);
 
         if (templateErrors.isEmpty()) {
             log.info("No template errors found.");

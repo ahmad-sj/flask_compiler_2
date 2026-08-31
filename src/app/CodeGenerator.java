@@ -10,6 +10,7 @@ import visitors.PythonDataExtractor;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -42,6 +43,9 @@ public class CodeGenerator {
     private final Map<String, RouteInfo> routesByName = new LinkedHashMap<>();
 
     private int pagesGenerated;
+
+    /** File names written by this run, so pages left by an earlier one can be told apart. */
+    private final Set<String> pagesWritten = new LinkedHashSet<>();
 
     /** Set while rendering a shell page, whose blank fields are expected. */
     private boolean suppressProblems;
@@ -123,6 +127,7 @@ public class CodeGenerator {
             }
         }
 
+        removeStalePages();
         copyStaticAssets();
 
         log.info("Pages generated: " + pagesGenerated);
@@ -204,6 +209,7 @@ public class CodeGenerator {
         String html = renderer.render(template, context);
         Path target = config.outputDir.resolve(fileName);
         Files.write(target, html.getBytes(StandardCharsets.UTF_8));
+        pagesWritten.add(fileName);
         pagesGenerated++;
         log.info("Rendered " + route.templateName + " -> " + fileName
                 + " (" + html.length() + " bytes)");
@@ -277,6 +283,40 @@ public class CodeGenerator {
     // ═══════════════════════════════════════════════════════════════════════
     //  STATIC ASSETS
     // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Deletes pages left by an earlier run that this one did not produce.
+     *
+     * The generator wrote and overwrote but never removed, so deleting a product
+     * left its page on disk with the old content: nothing linked to it any more,
+     * but it was still there and still served. The cleanup existed only in
+     * check.ps1, which wiped the directory before every run - which is exactly
+     * why the test suite could not see the problem it was hiding.
+     *
+     * Removing only what this run did not write, rather than clearing the
+     * directory first, means there is never a moment when the output is empty
+     * and a failure part-way through generation leaves the previous pages intact.
+     *
+     * Scoped to *.html: the static assets are copied separately, and a file
+     * someone put here by hand is not ours to delete.
+     */
+    private void removeStalePages() throws IOException {
+        if (!Files.isDirectory(config.outputDir)) return;
+
+        // Collected first, then deleted: mutating a directory while streaming it
+        // is not defined behaviour on every file system.
+        List<Path> stale = new ArrayList<>();
+        try (DirectoryStream<Path> pages = Files.newDirectoryStream(config.outputDir, "*.html")) {
+            for (Path page : pages) {
+                if (!pagesWritten.contains(page.getFileName().toString())) stale.add(page);
+            }
+        }
+
+        for (Path page : stale) {
+            Files.delete(page);
+            log.info("Removed stale page " + page.getFileName());
+        }
+    }
 
     /** Copies app.py, style.css and script.js to the output untransformed. */
     private void copyStaticAssets() throws IOException {

@@ -3,7 +3,10 @@ package visitors;
 import models.App;
 import models.Node;
 import models.jinja.atoms.IdType;
+import models.jinja.atoms.ListType;
 import models.jinja.atoms.StringType;
+import models.python.literals.Dict;
+import models.python.literals.DictItem;
 import models.jinja.expressions.AddExpression;
 import models.jinja.expressions.Argument;
 import models.jinja.expressions.ArgumentList;
@@ -464,6 +467,27 @@ public class SemanticAnalyzer {
             if (callsItself(((ExprLine) node).returnExpr, name)) return true;
         } else if (node instanceof AssignLine) {
             if (callsItself(((AssignLine) node).expr, name)) return true;
+        } else if (node instanceof Value) {
+            // The direct-call case is handled at the top of this method; this
+            // descends into the base so a call nested inside it - `return [f()]`
+            // parses as a Value wrapping a list - is still found.
+            if (callsItself(((Value) node).baseValue, name)) return true;
+        } else if (node instanceof ListType) {
+            // A literal holds expressions too, so `return [f()]` hides a self-call
+            // from this walk unless it descends here.
+            ListType list = (ListType) node;
+            if (list.itemList != null) {
+                for (Node item : list.itemList) {
+                    if (callsItself(item, name)) return true;
+                }
+            }
+        } else if (node instanceof Dict) {
+            Dict dict = (Dict) node;
+            if (dict.itemList != null) {
+                for (Node item : dict.itemList) {
+                    if (item instanceof DictItem && callsItself(((DictItem) item).expr, name)) return true;
+                }
+            }
         } else if (node instanceof AddExpression) {
             for (Node expr : ((AddExpression) node).exprList) {
                 if (callsItself(expr, name)) return true;
@@ -753,7 +777,7 @@ public class SemanticAnalyzer {
             if (iterableNode instanceof IdType) {
                 String iterName = ((IdType) iterableNode).name;
                 Symbol iterSym = symbolTable.currentScope.resolve(iterName);
-                if (iterSym != null && ("IntType".equals(iterSym.type) || "FloatType".equals(iterSym.type))) {
+                if (iterSym != null && isNotIterable(iterSym.type)) {
                     errors.add(new SemanticError(SemanticError.ErrorType.TYPE_ERROR, forNode.getLineNumber(), iterName,
                             "'" + iterName + "' is not iterable (type: " + iterSym.type + ")"));
                 }
@@ -828,6 +852,27 @@ public class SemanticAnalyzer {
         else if (node instanceof IdType) {
             IdType id = (IdType) node;
             checkRead(id.name, id);
+        }
+        // ── ListType / Dict ──
+        //   A literal is not a leaf: its items are arbitrary expressions. Without
+        //   these two branches nothing descended into them, so an undefined name
+        //   or a recursive call written inside a list or dict value was invisible
+        //   to every check below — `x = [nope]` analysed clean.
+        //   Dict keys are literals by grammar (dictItem : literal COLON ternaryExpr),
+        //   so only the value side can contain a read worth checking.
+        else if (node instanceof ListType) {
+            ListType list = (ListType) node;
+            if (list.itemList != null) {
+                for (Node item : list.itemList) analyzeNode(item);
+            }
+        }
+        else if (node instanceof Dict) {
+            Dict dict = (Dict) node;
+            if (dict.itemList != null) {
+                for (Node item : dict.itemList) {
+                    if (item instanceof DictItem) analyzeNode(((DictItem) item).expr);
+                }
+            }
         }
         // ── AddExpression ──
         //   Check 2: Type Mismatch in Addition — cannot add String + Int/Float.
@@ -918,6 +963,7 @@ public class SemanticAnalyzer {
         }
 
         boolean hasCallTrailer = false;          // tracks if there is a "(...)" trailer
+        boolean callDirectlyOnBase = false;      // tracks if the FIRST trailer is a call
         boolean subscriptDirectlyOnBase = false; // tracks if the first trailer is a subscript
         int positionalArgCount = 0;              // counts positional arguments for arity checks
 
@@ -927,6 +973,10 @@ public class SemanticAnalyzer {
                 Node trailer = trailers.get(i);
                 if (trailer instanceof CallTrailer) {
                     hasCallTrailer = true;
+                    // products.append(x) also has a call trailer, but the thing
+                    // being called is the member, not the list. Only a call in
+                    // first position calls the base itself.
+                    if (i == 0) callDirectlyOnBase = true;
                     CallTrailer ct = (CallTrailer) trailer;
                     if (ct.argList instanceof ArgumentList) {
                         ArgumentList al = (ArgumentList) ct.argList;
@@ -959,7 +1009,7 @@ public class SemanticAnalyzer {
         if (baseSym != null) {
             if (hasCallTrailer) {
                 // Check 1 — Type Error: Call on a primitive variable
-                if ("var".equals(baseSym.kind) && isPrimitiveType(baseSym.type)) {
+                if ("var".equals(baseSym.kind) && callDirectlyOnBase && isNotCallable(baseSym.type)) {
                     errors.add(new SemanticError(SemanticError.ErrorType.TYPE_ERROR, val.getLineNumber(), baseName,
                             "'" + baseName + "' is not callable (type: " + baseSym.type + ")"));
                 }
@@ -1262,6 +1312,29 @@ public class SemanticAnalyzer {
     private boolean isPrimitiveType(String type) {
         return "IntType".equals(type) || "FloatType".equals(type) || "StringType".equals(type)
                 || "TrueValue".equals(type) || "FalseValue".equals(type) || "NoneValue".equals(type);
+    }
+
+    /**
+     * Types that cannot appear after {@code for x in ...}.
+     *
+     * Deliberately not the same set as isPrimitiveType: a string IS iterable in
+     * Python, character by character, so flagging it would be a false positive.
+     * Booleans and None are not, and were previously missed because this check
+     * tested only IntType and FloatType.
+     */
+    private boolean isNotIterable(String type) {
+        return "IntType".equals(type) || "FloatType".equals(type)
+                || "TrueValue".equals(type) || "FalseValue".equals(type) || "NoneValue".equals(type);
+    }
+
+    /**
+     * Types that cannot be called.
+     *
+     * A list or dict is not callable either, but neither is primitive, so
+     * {@code lst = [1]} followed by {@code lst()} used to pass unreported.
+     */
+    private boolean isNotCallable(String type) {
+        return isPrimitiveType(type) || "ListType".equals(type) || "DictType".equals(type);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

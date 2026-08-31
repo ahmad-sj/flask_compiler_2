@@ -1,0 +1,412 @@
+===============================================================================
+ FLASK -> STATIC SITE COMPILER  ·  COMMAND REFERENCE
+ PowerShell, from the repository root.
+ Every command here was executed and produced the result described.
+===============================================================================
+
+CONTENTS
+  0.  SETUP                          build once, set the classpath
+  1.  RUN THE COMPILER               all modes and flags
+  2.  THE THREE TEST SUITES          check / check-semantic / verify-generation
+  3.  TEST ONE FILE ALONE            single fixture, nothing else
+  4.  TEST ONE SEMANTIC CHECK        all 28 checks, one command each
+  5.  TEST ONE TEMPLATE PROJECT      the 8 template checks
+  6.  THE ORIGINAL 27 FIXTURES       every one, by name
+  7.  VERIFY SPECIFIC BEHAVIOUR      idempotency, links, add/edit/delete
+  8.  INSPECT THE ARTIFACTS          tokens, trees, symbol table, log
+  9.  COUNT THINGS                   numbers you may be asked for
+  10. DEMONSTRATE THE KNOWN LIMITS   the traps, on purpose
+  11. RESET / TROUBLESHOOTING
+
+
+===============================================================================
+ 0.  SETUP  -  run these two lines once per terminal session
+===============================================================================
+
+.\build.ps1
+$CP = "out\classes;dependencies\antlr-4.13.2-complete.jar"
+
+  build.ps1 regenerates the ANTLR parsers from grammars\*.g4 FIRST, then
+  compiles. Never run javac alone: src\antlr\*.java is committed, so javac
+  would just rebuild the stale copies and your grammar edit would do nothing.
+
+  $CP is lost when you open a new terminal tab. Re-run that line.
+
+
+===============================================================================
+ 1.  RUN THE COMPILER
+===============================================================================
+
+# default: project\ -> output\ + compiler_output\
+java -cp $CP app.FlaskCompiler
+
+# quiet: write the artifact files but do not echo the trees
+java -cp $CP app.FlaskCompiler --quiet-ast
+
+# everything on the console: tokens + parse trees + ASTs + symbol tables
+java -cp $CP app.FlaskCompiler --print-all
+
+# just the token streams
+java -cp $CP app.FlaskCompiler --print-tokens
+
+# just the ANTLR parse trees (very long)
+java -cp $CP app.FlaskCompiler --print-parse-tree
+
+# explicit paths:  <input>  <outputDir>  <compilerOutputDir>
+java -cp $CP app.FlaskCompiler project output compiler_output
+
+# open the generated site
+start output\index.html
+
+  EXIT CODES:  0 = success   1 = compilation problem   2 = I/O failure
+  Check with:  $LASTEXITCODE
+
+
+===============================================================================
+ 2.  THE THREE TEST SUITES
+===============================================================================
+
+.\check.ps1              # 5 groups: does the pipeline work end to end
+.\check-semantic.ps1     # 140 fixtures: does every semantic check fire 5/5
+.\verify-generation.ps1  # 15 checks: is the generated output actually correct
+
+# all three, one after another
+.\check.ps1 ; .\check-semantic.ps1 ; .\verify-generation.ps1
+
+  WHAT EACH ONE PROVES
+    check.ps1              the pipeline RUNS      (27 invalid caught, 3 valid
+                                                   accepted, 2 broken template
+                                                   projects caught, control flow)
+    check-semantic.ps1     each CHECK FIRES       (20 python + 8 template checks,
+                                                   5 different programs each,
+                                                   plus a false-positive guard)
+    verify-generation.ps1  the OUTPUT IS RIGHT    (page count, data fidelity,
+                                                   every local link resolves,
+                                                   idempotent, add/edit/delete)
+
+
+===============================================================================
+ 3.  TEST ONE FILE ALONE  -  no other files are read
+===============================================================================
+
+java -cp $CP app.FlaskCompiler tests\test_undefined.py out\x out\y --quiet-ast
+
+  Pointing the compiler at a single .py file runs ONLY:
+      lexing -> parsing -> AST building -> semantic analysis
+  No templates are needed and none are read. out\x and out\y are throwaway
+  directories for whatever it would have written.
+
+# see just the error lines
+$o = java -cp $CP app.FlaskCompiler tests\test_undefined.py out\x out\y --quiet-ast 2>&1 | Out-String
+$o -split "`n" | Select-String "\["
+
+# see the exit code too
+java -cp $CP app.FlaskCompiler tests\test_undefined.py out\x out\y --quiet-ast ; "EXIT=$LASTEXITCODE"
+
+# with the full AST and symbol table printed
+java -cp $CP app.FlaskCompiler tests\test_undefined.py out\x out\y --print-all
+
+
+===============================================================================
+ 4.  TEST ONE SEMANTIC CHECK  -  20 python checks, 5 fixtures each
+===============================================================================
+
+  Pattern:  tests\semantic\<check>_1.py  ...  <check>_5.py
+
+# run all 5 fixtures of one check
+#   NOTE: the output is captured into $o FIRST. Piping a RUNNING java command
+#   straight into Select-Object -First N kills the process (see section 11).
+Get-ChildItem tests\semantic\scope_escape_*.py | ForEach-Object {
+    "--- $($_.Name) ---"
+    $o = java -cp $CP app.FlaskCompiler $_.FullName out\x out\y --quiet-ast 2>&1 | Out-String
+    $o -split "`n" | Select-String "\[" | ForEach-Object { "   " + $_.ToString().Trim() }
+}
+
+# ---- the 20 checks, one fixture each -------------------------------------
+java -cp $CP app.FlaskCompiler tests\semantic\add_mismatch_1.py      out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\app_run_in_route_1.py  out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\arg_count_1.py         out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\compare_mismatch_1.py  out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\dup_route_1.py         out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\no_app_1.py            out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\no_flask_import_1.py   out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\no_return_1.py         out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\no_route_1.py          out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\no_subscript_1.py      out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\not_callable_1.py      out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\not_iterable_1.py      out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\recursion_1.py         out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\redef_assign_1.py      out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\redirect_literal_1.py  out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\scope_escape_1.py      out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\shadow_builtin_1.py    out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\shadow_param_1.py      out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\undefined_var_1.py     out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic\unreachable_1.py       out\x out\y --quiet-ast
+
+# what each check should say (the expected message text)
+Get-Content tests\semantic\EXPECTED.txt
+
+# read the source of a fixture before running it
+Get-Content tests\semantic\scope_escape_1.py
+
+
+===============================================================================
+ 5.  TEST ONE TEMPLATE PROJECT  -  8 template checks, 5 projects each
+===============================================================================
+
+  These need app.py AND templates\, so you point at the DIRECTORY, not a file.
+  Pattern:  tests\semantic_templates\<check>_1 ... _5
+
+java -cp $CP app.FlaskCompiler tests\semantic_templates\tpl_missing_1      out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic_templates\extends_missing_1  out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic_templates\unknown_test_1     out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic_templates\unknown_function_1 out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic_templates\urlfor_noargs_1    out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic_templates\urlfor_unknown_1   out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic_templates\unknown_filter_1   out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\semantic_templates\var_not_provided_1 out\x out\y --quiet-ast
+
+# run all 5 projects of one check
+Get-ChildItem tests\semantic_templates -Directory -Filter "unknown_filter_*" | ForEach-Object {
+    "--- $($_.Name) ---"
+    $o = java -cp $CP app.FlaskCompiler $_.FullName out\x out\y --quiet-ast 2>&1 | Out-String
+    $o -split "`n" | Select-String "\[" | ForEach-Object { "   " + $_.ToString().Trim() }
+}
+
+# the two original broken-template projects
+java -cp $CP app.FlaskCompiler tests\bad_templates\undefined_context out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\bad_templates\broken_links      out\x out\y --quiet-ast
+
+# look inside a template fixture
+Get-Content tests\semantic_templates\unknown_filter_1\templates\index.jinja
+Get-Content tests\semantic_templates\unknown_filter_1\app.py
+
+
+===============================================================================
+ 6.  THE ORIGINAL 27 FIXTURES  -  one command each
+===============================================================================
+
+java -cp $CP app.FlaskCompiler tests\test_app_run_in_route.py           out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_duplicate_route.py            out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_func_as_value.py              out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_hard_deep_scope_escape.py     out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_hard_multiple_distinct_errors.py out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_hard_shadow_then_escape.py    out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_infinite_recursion.py         out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_missing_app_instance.py       out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_missing_flask_import.py       out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_missing_return.py             out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_missing_route.py              out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_param_shadow.py               out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_redefinition.py               out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_redirect_no_url_for.py        out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_scope_error_else.py           out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_scope_error_for.py            out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_scope_error_if.py             out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_scope_error_while.py          out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_shadows_builtin.py            out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_type_error_call.py            out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_type_error_iterable.py        out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_type_error_subscript.py       out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_type_mismatch_add.py          out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_type_mismatch_compare.py      out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_undefined.py                  out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_unreachable_code.py           out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\test_wrong_arg_count.py            out\x out\y --quiet-ast
+
+# the 3 VALID programs - these must report NOTHING (false-positive guard)
+java -cp $CP app.FlaskCompiler tests\valid\valid_forward_reference.py        out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\valid\valid_nested_scopes.py            out\x out\y --quiet-ast
+java -cp $CP app.FlaskCompiler tests\valid\valid_recursion_with_base_case.py out\x out\y --quiet-ast
+
+
+===============================================================================
+ 7.  VERIFY SPECIFIC BEHAVIOUR
+===============================================================================
+
+# --- is the output idempotent? (same input -> same bytes) -----------------
+$a = Get-ChildItem output\*.html | Get-FileHash
+java -cp $CP app.FlaskCompiler --quiet-ast > $null
+$b = Get-ChildItem output\*.html | Get-FileHash
+if ($null -eq (Compare-Object $a $b -Property Hash)) { "IDENTICAL" } else { "DIFFERS" }
+
+# --- does every local link point at a file that exists? -------------------
+foreach ($page in Get-ChildItem output\*.html) {
+    $html = Get-Content $page.FullName -Raw
+    foreach ($m in [regex]::Matches($html, '(?:href|src)="([^"]+)"')) {
+        $t = $m.Groups[1].Value
+        if ($t -match '^(https?:|//|#|mailto:|data:)') { continue }
+        if (-not (Test-Path (Join-Path "output" $t))) { "DEAD: $($page.Name) -> $t" }
+    }
+}
+"link check done"
+
+# --- is the source in sync with the site? ---------------------------------
+(Select-String project\app.py -Pattern '"id":\s*\d' | Measure-Object).Count   # products in source
+(Get-ChildItem output\product_detail_?.html).Count                            # per-item pages
+# these two numbers must match
+
+# --- add / edit / delete a product (the ONLY way: edit app.py, recompile) --
+#   1. edit project\app.py in your editor
+#   2. recompile:
+java -cp $CP app.FlaskCompiler --quiet-ast
+#   3. confirm it landed:
+Select-String output\index.html -Pattern "YOUR NEW PRODUCT NAME"
+#   4. open, and press Ctrl+F5 (a plain refresh may serve the cached page)
+start output\index.html
+
+# --- what does a failed build do to existing output? ----------------------
+(Get-ChildItem output\*.html).Count      # before
+# now break project\app.py (delete a closing brace), then:
+java -cp $CP app.FlaskCompiler --quiet-ast ; "EXIT=$LASTEXITCODE"
+(Get-ChildItem output\*.html).Count      # unchanged - the gate runs before any write
+
+# --- syntax error vs semantic error ---------------------------------------
+#   missing }        -> syntax error, halts at parsing, 0 files
+#   prin not print   -> NOT a syntax error; 'prin' is a valid NAME token.
+#                       Caught one phase later as "Variable 'prin' is not defined".
+
+
+===============================================================================
+ 8.  INSPECT THE ARTIFACTS
+===============================================================================
+
+# the nine files the compiler writes
+Get-ChildItem compiler_output
+
+# tokens: the synthetic INDENT/DEDENT that make Python blocks parseable
+Select-String compiler_output\tokens.txt -Pattern "INDENT|DEDENT"
+
+# tokens: the lexer mode switches
+Select-String compiler_output\tokens.txt -Pattern "J_STMNT_START|J_EXPR_START|STYLE_TAG_START_NAME|CSS_SEL_ELEM"
+
+# parse tree vs AST - the size difference IS the answer
+Get-ChildItem compiler_output\parse_tree.txt, compiler_output\ast_python.txt |
+    Select-Object Name, Length
+
+# AST: node id, name and source line on every structural node
+Get-Content compiler_output\ast_python.txt -TotalCount 25
+Select-String compiler_output\ast_python.txt -Pattern "^#\d+ "
+
+# both symbol tables
+Get-Content compiler_output\symbol_table.txt
+
+# the semantic report
+Get-Content compiler_output\semantic_report.txt
+
+# the generation log: routes discovered, pages written
+Get-Content compiler_output\generation_log.txt
+Select-String compiler_output\generation_log.txt -Pattern "Routes|->|Rendered|Removed|Copied"
+
+# url_for resolved to real filenames
+Select-String output\index.html -Pattern "href="
+
+
+===============================================================================
+ 9.  COUNT THINGS  -  do not quote a number you have not run
+===============================================================================
+
+# lexer modes in the template grammar (14 named + DEFAULT_MODE = 15)
+(Select-String grammars\templateLexer.g4 -Pattern '^mode ').Count
+
+# node classes and how many override print(int)
+(Get-ChildItem src\models -Recurse -Filter *.java).Count
+(Get-ChildItem src\models -Recurse -Filter *.java | Select-String 'public String print\(int').Count
+
+# visitor override counts
+foreach ($f in "AppVisitor","PythonVisitor","TemplateVisitor","NodeVisitor") {
+    "{0,-16} {1}" -f $f, (Select-String "src\visitors\$f.java" -Pattern '@Override').Count }
+
+# semantic checks: 28 python + 9 template = 37 error sites
+(Select-String src\visitors\SemanticAnalyzer.java         -Pattern 'new SemanticError').Count
+(Select-String src\visitors\TemplateSemanticAnalyzer.java -Pattern 'new SemanticError').Count
+
+# test fixtures
+(Get-ChildItem tests\test_*.py).Count                       # 27 original
+(Get-ChildItem tests\semantic\*.py).Count                   # 100 python
+(Get-ChildItem tests\semantic_templates -Directory).Count   # 40 template
+
+# grammar sizes
+Get-ChildItem grammars\*.g4 | Select-Object Name, Length
+
+
+===============================================================================
+ 10. DEMONSTRATE THE KNOWN LIMITS  -  on purpose, in a scratch copy
+===============================================================================
+
+  Never do these in project\ - it is the graded input. Work on a copy.
+
+Copy-Item -Recurse project out\demo
+
+# --- {% include %} is outside the supported subset -------------------------
+#   put  {% include "x.jinja" %}  in out\demo\templates\index.jinja, then:
+java -cp $CP app.FlaskCompiler out\demo out\demo\site out\demo\co --quiet-ast
+#   -> 18 token-recognition errors, one per character: J_STMNT_MODE has no
+#      fallback identifier token, so an unknown tag name cannot be tokenised.
+
+# --- a mismatched closing tag is silently repaired -------------------------
+#   put  <div>x</p>  in a template, then rebuild:
+#   -> accepted; the output says </div>, because the renderer re-emits the
+#      START tag's name. RESULT: clean.
+
+# --- values are not HTML-escaped ------------------------------------------
+#   set a product name to  <b>BOLD</b>  in out\demo\app.py, rebuild:
+Select-String out\demo\site\index.html -Pattern "<b>BOLD</b>"
+#   -> emitted raw, in the body AND inside alt="...". |safe is not supported.
+
+# --- two products with the same id ----------------------------------------
+#   -> the file is written twice, the last one wins, silently.
+
+Remove-Item -Recurse -Force out\demo
+
+
+===============================================================================
+ 11. RESET / TROUBLESHOOTING
+===============================================================================
+
+# what did I change?
+git status
+git diff
+
+# undo one file
+git checkout -- src\visitors\SemanticAnalyzer.java
+
+# THE RESCUE LINE - undo everything, rebuild, regenerate  (~40 seconds)
+git checkout -- . ; .\build.ps1 ; java -cp $CP app.FlaskCompiler --print-all
+
+# clean slate before a demo (the generator does not clean compiler_output)
+Remove-Item -Recurse -Force output, compiler_output
+java -cp $CP app.FlaskCompiler --print-all
+
+# remove scratch directories made while testing
+Remove-Item -Recurse -Force out\x, out\y, out\demo -ErrorAction SilentlyContinue
+
+-------------------------------------------------------------------------------
+ ERRORS YOU MAY CAUSE YOURSELF
+-------------------------------------------------------------------------------
+
+  "illegal character: '﻿'"
+      You edited a .java file with PowerShell Set-Content -Encoding utf8,
+      which writes a BOM that javac rejects. Edit Java in the IDE, or use:
+      [System.IO.File]::WriteAllText($p, $text, (New-Object System.Text.UTF8Encoding $false))
+
+  Exit code 255 with truncated output
+      You piped a RUNNING java command into Select-Object -First N.
+      PowerShell ends the pipeline early and kills the process, so it looks
+      like the compiler crashed. Run the command, THEN search the files.
+
+  My grammar change had no effect
+      You ran javac instead of .\build.ps1, so the committed (stale) parser
+      was recompiled. Always .\build.ps1 after touching a .g4 file.
+
+  "Not built yet - run .\build.ps1 first"
+      From check.ps1 / check-semantic.ps1 / verify-generation.ps1. Literal.
+
+  $CP is empty / "Could not find or load main class"
+      New terminal tab. Re-run the $CP line from section 0.
+
+  "Cannot find path ...\output"
+      You deleted output\ and did not regenerate. Run the compiler again.
+
+===============================================================================

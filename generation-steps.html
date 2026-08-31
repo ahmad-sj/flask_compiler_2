@@ -1,0 +1,654 @@
+<title>خطوات توليد الشيفرة</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    color-scheme: light;
+    --ground:#F7F6F4; --surface:#FFFFFF; --surface-2:#F0EDE9; --term:#F1EFEC;
+    --ink:#1A1614; --ink-2:#3B342F; --muted:#5F564F; --faint:#8D837B;
+    --rule:#E4DFD8; --rule-strong:#CDC5BB;
+    --accent:#B0512A; --accent-soft:#FAEFE8;
+    --stage1:#2C5FA0; --stage2:#B0512A;
+    --crit:#A5252F; --crit-soft:#FBEBEC;
+    --warn:#8A5D0B; --warn-soft:#FBF3E2;
+    --ok:#2A6547;  --ok-soft:#E8F2EC;
+    --shadow:0 1px 2px rgba(26,22,20,.05), 0 1px 8px rgba(26,22,20,.04);
+  }
+  
+  
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground); color:var(--ink); margin:0;
+    font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,system-ui,sans-serif;
+    font-size:16px; line-height:1.85; -webkit-font-smoothing:antialiased;
+  }
+  .rtl{direction:rtl; text-align:right}
+  .wrap{max-width:1000px; margin:0 auto; padding:0 26px 100px}
+
+  code,.f,.cmd,.out{
+    font-family:"IBM Plex Mono",ui-monospace,"Courier New",monospace;
+    direction:ltr; unicode-bidi:isolate;
+  }
+  code,.f{
+    font-size:.85em; background:var(--surface-2); border-radius:3px;
+    padding:.1em .38em; color:var(--ink-2); display:inline-block;
+  }
+  .f{border:1px solid var(--rule); white-space:nowrap}
+
+  header.mast{background:var(--surface); border-bottom:1px solid var(--rule); padding:46px 0 30px}
+  header.mast .wrap{padding-bottom:0}
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--faint); margin:0 0 14px; direction:ltr; text-align:right;
+  }
+  h1{font-weight:700; font-size:clamp(28px,4.2vw,40px); line-height:1.35; margin:0 0 14px; text-wrap:balance}
+  .standfirst{font-size:17px; color:var(--muted); max-width:62ch; margin:0 0 22px}
+  .meta{display:flex; flex-wrap:wrap; gap:6px 26px; padding-top:18px; border-top:1px solid var(--rule); font-size:14px; color:var(--muted)}
+  .meta b{color:var(--ink); font-weight:600}
+
+  nav.toc{
+    position:sticky; top:0; z-index:20; border-bottom:1px solid var(--rule);
+    background:color-mix(in srgb, var(--ground) 93%, transparent); backdrop-filter:blur(10px);
+  }
+  nav.toc .wrap{padding:0}
+  nav.toc ul{display:flex; gap:2px; list-style:none; margin:0; padding:0; overflow-x:auto}
+  nav.toc a{
+    display:block; white-space:nowrap; padding:11px 13px 9px; font-size:14px;
+    color:var(--muted); text-decoration:none; border-bottom:2px solid transparent;
+  }
+  nav.toc a:hover{color:var(--accent); border-bottom-color:var(--rule-strong)}
+  nav.toc a:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+
+  section{padding-top:50px}
+  h2{font-weight:700; font-size:24px; line-height:1.45; margin:0 0 10px; text-wrap:balance; display:flex; align-items:baseline; gap:12px}
+  h2 .tag{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600;
+    color:var(--surface); background:var(--sc); border-radius:4px; padding:3px 9px; flex:none; direction:ltr;
+  }
+  .lede{color:var(--muted); font-size:15.5px; margin:0 0 22px; max-width:70ch}
+  p{margin:0 0 13px}
+  ul,ol{margin:0 0 15px; padding-inline-start:24px}
+  li{margin-bottom:7px}
+  hr{border:0; border-top:1px solid var(--rule); margin:42px 0}
+
+  /* ---- step card ---- */
+  .step{
+    border:1px solid var(--rule); border-radius:8px; background:var(--surface);
+    margin:0 0 18px; overflow:hidden; box-shadow:var(--shadow);
+    border-inline-start:4px solid var(--sc);
+  }
+  .step > header{padding:15px 20px 14px; background:var(--surface-2); border-bottom:1px solid var(--rule)}
+  .step .top{display:flex; flex-wrap:wrap; align-items:baseline; gap:10px 13px; margin-bottom:5px}
+  .step .num{
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:700;
+    color:var(--surface); background:var(--sc); border-radius:50%;
+    width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center;
+    flex:none; direction:ltr; align-self:center;
+  }
+  .step h3{margin:0; font-size:16.5px; font-weight:600; line-height:1.45}
+  .step .where{
+    margin-inline-start:auto; font-family:"IBM Plex Mono",monospace; font-size:11.5px;
+    color:var(--muted); direction:ltr; background:var(--surface);
+    border:1px solid var(--rule); border-radius:4px; padding:2px 9px; white-space:nowrap;
+  }
+  .step .inner{padding:17px 20px 19px}
+  .step .inner > :last-child{margin-bottom:0}
+  .step .what{font-size:15.5px; color:var(--ink-2); margin:0 0 14px}
+
+  .cmd{
+    background:var(--term); border:1px solid var(--rule); border-radius:5px;
+    padding:12px 15px; margin:0 0 14px; overflow-x:auto; text-align:left;
+    font-size:12.5px; line-height:1.7; color:var(--ink); white-space:pre;
+  }
+  .cmd .c{color:var(--faint)}
+  .cmd b{color:var(--accent); font-weight:600}
+  .out{
+    border-inline-start:2px solid var(--rule-strong); padding:2px 14px 2px 0; margin:0 0 14px;
+    font-size:12px; line-height:1.65; color:var(--muted); white-space:pre; overflow-x:auto; text-align:left;
+  }
+  .out b{color:var(--ink); font-weight:600}
+
+  .note{
+    background:var(--accent-soft); border-radius:5px; padding:12px 15px; margin:0;
+    font-size:14.5px; color:var(--ink-2);
+  }
+  .note b{
+    display:block; font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--accent); margin-bottom:5px; font-weight:600;
+    direction:ltr; text-align:right;
+  }
+  .note.warn{background:var(--warn-soft)} .note.warn b{color:var(--warn)}
+  .note.crit{background:var(--crit-soft)} .note.crit b{color:var(--crit)}
+  .note.ok{background:var(--ok-soft)}     .note.ok b{color:var(--ok)}
+
+  .tw{overflow-x:auto; margin:0 0 20px; border:1px solid var(--rule); border-radius:6px; background:var(--surface)}
+  table{border-collapse:collapse; width:100%; font-size:14.5px}
+  th{text-align:right; font-size:12px; font-weight:600; color:var(--faint); padding:11px 15px;
+     border-bottom:1px solid var(--rule-strong); background:var(--surface-2); white-space:nowrap}
+  td{padding:11px 15px; border-bottom:1px solid var(--rule); vertical-align:top; line-height:1.65}
+  tr:last-child td{border-bottom:0}
+  td.ltr{direction:ltr; text-align:left; font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted)}
+
+  .call{border:1px solid var(--rule); border-inline-start:3px solid var(--accent); background:var(--surface);
+        border-radius:6px; padding:16px 19px; margin:0 0 20px; box-shadow:var(--shadow)}
+  .call.ok{border-inline-start-color:var(--ok)}
+  .call.crit{border-inline-start-color:var(--crit)}
+  .call h4{font-family:"IBM Plex Mono",monospace; font-weight:500; font-size:11px; letter-spacing:.1em;
+           text-transform:uppercase; color:var(--ink); margin:0 0 9px; text-align:right}
+  .call > :last-child{margin-bottom:0}
+
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--rule); color:var(--faint); font-size:13px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  @media (max-width:620px){ .step .where{margin-inline-start:0} }
+</style>
+
+<div class="rtl">
+
+<header class="mast">
+  <div class="wrap">
+    <p class="eyebrow">ملاد · تتبّع كامل بالترتيب</p>
+    <h1>خطوات توليد الشيفرة</h1>
+    <p class="standfirst">‏24 خطوة بالترتيب الذي تُنفَّذ به فعلاً، من قراءة <code>app.py</code> حتى كتابة آخر ملف HTML — كلّ خطوة باسم ملفها ورقم سطرها والشيفرة التي تنفّذها.</p>
+    <div class="meta">
+      <span><b>مرحلتان</b> الاستخراج (4) ثم التوليد (6)</span>
+      <span><b>خمسة ملفات</b> ‏1930 سطراً</span>
+      <span><b>الناتج</b> 12 صفحة من 5 مسارات</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#kharita">الخريطة</a></li>
+      <li><a href="#stage4">المرحلة 4 · الاستخراج (1–7)</a></li>
+      <li><a href="#stage6">المرحلة 6 · التوليد (8–24)</a></li>
+      <li><a href="#tatabbu">تتبّع صفحة واحدة</a></li>
+      <li><a href="#khulasa">جدول الخلاصة</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="wrap">
+
+<!-- ============================================ -->
+<section id="kharita">
+  <h2 style="--sc:var(--accent)">الخريطة قبل التفاصيل</h2>
+  <p class="lede">توليد الشيفرة مرحلتان من أصل ستّ في المترجم. بينهما حدٌّ واحد اسمه <code>RouteInfo</code>، ولا يعبره أيّ شيء من شجرة بايثون.</p>
+
+  <div class="cmd">app.py + templates/
+     │
+     │   <span class="c">المراحل 1–3: تحليل لفظي ونحوي، بناء الشجرة، تحليل دلالي  (ليست قسمك)</span>
+     ▼
+  <b>[ المرحلة 4 ] PythonDataExtractor</b>          الخطوات 1 – 7
+     │   شجرة بايثون  ──▶  بيانات جافا عادية
+     ▼
+  <b>moduleVars</b> = { products: List&lt;Map&gt;, app: null }
+  <b>routes</b>     = [ RouteInfo × 5 ]
+     │
+     │   <span class="c">المرحلة 5: فحص دلالي للقوالب (رغد)</span>
+     ▼
+  <b>[ المرحلة 6 ] CodeGenerator + JinjaRenderer</b>   الخطوات 8 – 24
+     │   بيانات + شجرة القالب  ──▶  HTML
+     ▼
+  output/*.html   (12 ملفاً)</div>
+
+  <div class="call">
+    <h4>الملفات الخمسة بالترتيب الذي تُستدعى به</h4>
+    <div class="tw" style="margin:0">
+    <table>
+      <thead><tr><th>#</th><th>الملف</th><th>مسؤوليته في جملة</th><th>الأسطر</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td class="ltr">FlaskCompiler.java</td><td>يستدعي المرحلتين بالترتيب</td><td class="ltr">113, 141-142</td></tr>
+        <tr><td>2</td><td class="ltr">PythonDataExtractor.java</td><td>يقرأ القيم من شجرة بايثون</td><td class="ltr">377</td></tr>
+        <tr><td>3</td><td class="ltr">RouteInfo.java</td><td>يحمل وصف مسار واحد</td><td class="ltr">69</td></tr>
+        <tr><td>4</td><td class="ltr">CodeGenerator.java</td><td>يقرّر أيّ صفحة تُكتب وباسم ماذا</td><td class="ltr">341</td></tr>
+        <tr><td>5</td><td class="ltr">JinjaRenderer.java</td><td>يمشي على شجرة القالب ويُصدر HTML</td><td class="ltr">468</td></tr>
+        <tr><td>6</td><td class="ltr">ExpressionEvaluator.java</td><td>يقيّم ما بين <code>{{ }}</code></td><td class="ltr">711</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- ============================================ -->
+<section id="stage4">
+  <h2 style="--sc:var(--stage1)"><span class="tag">المرحلة 4</span>الاستخراج — الخطوات 1 إلى 7</h2>
+  <p class="lede">الهدف: تحويل شجرة بايثون إلى بيانات جافا عادية. بعد هذه المرحلة لا يحتاج أحد إلى الشجرة مرّة أخرى.</p>
+
+  <div class="step" style="--sc:var(--stage1)">
+    <header><div class="top"><span class="num">1</span><h3>نقطة البداية: استدعاء الاستخراج</h3><span class="where">FlaskCompiler.java:113</span></div></header>
+    <div class="inner">
+      <p class="what">بعد أن تنجح المراحل الثلاث الأولى وتصبح الشجرة سليمة، يستدعي المترجم المستخرج بسطر واحد.</p>
+      <div class="cmd">PythonDataExtractor extractor = new PythonDataExtractor();
+extractor.extract(app);          <span class="c">// app = جذر شجرة بايثون</span></div>
+      <p class="note"><b>لماذا هنا بالذات</b>لأن المرحلة 5 (فحص القوالب) تحتاج أن تعرف ما الذي يمرّره كل مسار، وهذا لا يُعرف قبل الاستخراج. فالترتيب 4 ثم 5 إجباري لا اختياري.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage1)">
+    <header><div class="top"><span class="num">2</span><h3>مروران على الشجرة، والترتيب مقصود</h3><span class="where">PythonDataExtractor.java:60</span></div></header>
+    <div class="inner">
+      <div class="cmd">public void extract(App app) {
+    <span class="c">// Module-level assignments first, so routes can resolve names against them.</span>
+    for (Node node : app.nodes)
+        if (node instanceof AssignLine)
+            moduleVars.put(name, toJavaValue(assign.expr));     <span class="c">← المرور الأول</span>
+
+    for (Node node : app.nodes)
+        if (node instanceof Func) extractRoute((Func) node);    <span class="c">← المرور الثاني</span>
+}</div>
+      <p class="note warn"><b>سؤال متوقّع: لماذا مرّتان؟</b>لأن الخطوة 6 تتحقّق من أن المجموعة التي وجدتها موجودة فعلاً في <code>moduleVars</code> وأنها <code>List</code>. لو عُكس الترتيب لكانت الخريطة فارغة، فيفشل الشرط <b>بصمت</b>: لا خطأ، بل صفحة واحدة بلا بيانات بدل أربع.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage1)">
+    <header><div class="top"><span class="num">3</span><h3>القاعدة الوحيدة: ما كان حرفياً استُخرج</h3><span class="where">PythonDataExtractor.java:248</span></div></header>
+    <div class="inner">
+      <p class="what"><code>toJavaValue</code> تعاودية، وتحوّل عقدة الشجرة إلى قيمة جافا. وكل ما ليس قيمة ساكنة يصير <code>null</code>.</p>
+      <div class="tw" style="margin-bottom:14px">
+      <table>
+        <thead><tr><th>في app.py</th><th>الناتج</th><th>السبب</th></tr></thead>
+        <tbody>
+          <tr><td class="ltr">"Smartwatch"</td><td class="ltr">String</td><td><code>StringType</code></td></tr>
+          <tr><td class="ltr">249.99</td><td class="ltr">Double</td><td><code>FloatType</code></td></tr>
+          <tr><td class="ltr">[{...},{...}]</td><td class="ltr">List&lt;Map&gt;</td><td>تعاود على العناصر</td></tr>
+          <tr><td class="ltr">app = Flask(__name__)</td><td class="ltr">null</td><td>استدعاء، لا قيمة ساكنة</td></tr>
+          <tr><td class="ltr">next_id()</td><td class="ltr">null</td><td>لا ننفّذ بايثون</td></tr>
+          <tr><td class="ltr">request.form['x']</td><td class="ltr">null</td><td>يُعرف وقت الطلب لا وقت البناء</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="note ok"><b>تفصيل يستحقّ الذكر</b>القواميس تُقرأ <b>كعقد</b> لا بطباعتها نصّاً وإعادة تحليلها. النسخة الأولى كانت تقسّم النصّ على <code>", "</code> فتُفسد أيّ قيمة تحتوي فاصلة. التعليق في السطر 46 يوثّق ذلك.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage1)">
+    <header><div class="top"><span class="num">4</span><h3>اكتشاف المسارات</h3><span class="where">PythonDataExtractor.java:86</span></div></header>
+    <div class="inner">
+      <p class="what">لكل دالّة في الملف: هل مزخرفها <code>@app.route</code>؟ إن نعم نبني <code>RouteInfo</code>.</p>
+      <div class="cmd">isRouteDecorator(decorator)   <span class="c">:110  هل الاسم app والعضو route؟</span>
+firstStringArg(decorator)    <span class="c">:120  "/product/&lt;int:product_id&gt;"</span>
+
+URL_PARAM regex              <span class="c">:55   &lt;(?:[^:&gt;]+:)?([^&gt;]+)&gt;</span>
+    ──▶  params = ["product_id"]           <span class="c">تتجاهل بادئة النوع int:</span></div>
+      <p class="note"><b>انتبه</b>‏<code>route.name</code> هو <b>اسم الدالّة</b> لا الرابط — وهو ما يشير إليه <code>url_for('detail')</code> لاحقاً في الخطوة 21.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage1)">
+    <header><div class="top"><span class="num">5</span><h3>أيّ قالب يعرضه المسار وبأيّ بيانات</h3><span class="where">PythonDataExtractor.java:129</span></div></header>
+    <div class="inner">
+      <div class="cmd">return render_template('product_detail.jinja', product=product)
+                       ▲                        ▲
+        وسيط موضعي ────┘                        └──── وسيط مسمّى
+        route.templateName                       route.context</div>
+      <p class="what">تبحث الدالّة في جسم المسار عن <code>ReturnLine</code> قيمته استدعاء لـ <code>render_template</code>، ثم توزّع الوسائط: الموضعي اسم القالب، والمسمّاة تدخل <code>context</code>.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage1)">
+    <header><div class="top"><span class="num">6</span><h3>ما الذي يكرّره المسار المُعامَل — بلا أيّ اسم مثبّت</h3><span class="where">PythonDataExtractor.java:162</span></div></header>
+    <div class="inner">
+      <div class="cmd">product = next((p for p in products if p["id"] == product_id), None)
+   ▲                        ▲                 ▲          ▲
+   │                        │                 │          └─ params[0]
+   │                        │                 └─ itemKeyName = "id"
+   │                        └─ collectionName = "products"
+   └─ itemVarName = "product"</div>
+      <div class="tw" style="margin-bottom:14px">
+      <table>
+        <thead><tr><th>الدالّة</th><th>السطر</th><th>ماذا تفعل</th></tr></thead>
+        <tbody>
+          <tr><td class="ltr">findGenExpression</td><td class="ltr">:181</td><td>تبحث عن تعبير المولّد بعمق ≤ 6، لأنه مغلَّف داخل <code>next(...)</code></td></tr>
+          <tr><td class="ltr">nameOf(gen.inExpr)</td><td class="ltr">:170</td><td>تعطي <code>products</code>، ويُشترط أن تكون <code>List</code> في <code>moduleVars</code></td></tr>
+          <tr><td class="ltr">matchedKey</td><td class="ltr">:207</td><td>تفحص شرط الـ if: طرف فيه فهرسة، وطرف اسمه ضمن معاملات المسار</td></tr>
+          <tr><td class="ltr">subscriptKey</td><td class="ltr">:225</td><td>تقرأ <code>"id"</code> من <code>p["id"]</code></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="note ok"><b>الجملة التي تقولها</b>«لا شيء مثبّت على المنتجات. سمِّ مجموعتك <code>users</code> ومفتاحك <code>uid</code> وسيعمل الأمر نفسه. الدليل في السجلّ: <code>[per-item over products]</code> — الاسم مقروء لا مكتوب.»</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage1)">
+    <header><div class="top"><span class="num">7</span><h3>الناتج: الحدّ الفاصل</h3><span class="where">RouteInfo.java</span></div></header>
+    <div class="inner">
+      <div class="cmd">RouteInfo {
+    name           = "detail"
+    urlPattern     = "/product/&lt;int:product_id&gt;"
+    params         = ["product_id"]
+    templateName   = "product_detail.jinja"
+    context        = { product: null }
+    collectionName = "products"      <span class="c">┐</span>
+    itemVarName    = "product"       <span class="c">├─ التوسيع لكل عنصر</span>
+    itemKeyName    = "id"            <span class="c">┘</span>
+}</div>
+      <p class="note crit"><b>أهمّ جملة في قسمك كلّه</b>«هذه الخريطة هي <b>المدخل الوحيد</b> الذي يستقبله المولّد. لا يرى المولّد عقدة واحدة من شجرة بايثون أبداً — والدليل أن <code>JinjaRenderer</code> و<code>ExpressionEvaluator</code> و<code>CodeGenerator</code> لا تستورد أيّ صنف من <code>models.python</code>، صفر استيرادات.»</p>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- ============================================ -->
+<section id="stage6">
+  <h2 style="--sc:var(--stage2)"><span class="tag">المرحلة 6</span>التوليد — الخطوات 8 إلى 24</h2>
+  <p class="lede">الهدف: تحويل البيانات + شجرة القالب إلى ملفات HTML على القرص.</p>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">8</span><h3>إنشاء المولّد وتشغيله</h3><span class="where">FlaskCompiler.java:141-142</span></div></header>
+    <div class="inner">
+      <div class="cmd">CodeGenerator generator = new CodeGenerator(app, templates, config, log, extractor);
+boolean generated = generator.generate();</div>
+      <p class="what">خمسة مدخلات: الشجرة (لبوّابة الأخطاء)، القوالب المحلّلة، الإعدادات، السجلّ، والمستخرج (أي البيانات).</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">9</span><h3>البوّابة: لا توليد مع وجود خطأ</h3><span class="where">CodeGenerator.java:86</span></div></header>
+    <div class="inner">
+      <div class="cmd">if (!app.semanticErrors.isEmpty()) {
+    log.error("Skipped: " + app.semanticErrors.size()
+            + " semantic error(s) must be fixed before generating.");
+    return false;                     <span class="c">← صفر ملفات تُكتب، الخروج بالرمز 1</span>
+}</div>
+      <p class="note ok"><b>لماذا هذه أول خطوة</b>لأن كلّ ما بعدها يكتب على القرص. ولأنها <b>قبل</b> خطوة الحذف (20)، فبناءٌ فاشل لا يمسّ مخرجات بناءٍ ناجح سابق. جُرّب: 12 صفحة قبل، 12 صفحة بعد بناء معطوب.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">10</span><h3>قراءة البيانات وفهرسة المسارات</h3><span class="where">CodeGenerator.java:95-97</span></div></header>
+    <div class="inner">
+      <div class="cmd">moduleVars = extractor.getModuleVars();
+routes     = extractor.getRoutes();
+for (RouteInfo route : routes) routesByName.put(route.name, route);   <span class="c">← لأجل url_for</span></div>
+      <p class="what">الفهرسة بالاسم هنا هي ما يجعل <code>url_for('detail')</code> في الخطوة 21 عملية بحث واحدة.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">11</span><h3>الحلقة الرئيسة: أربعة قرارات لكل مسار</h3><span class="where">CodeGenerator.java:112</span></div></header>
+    <div class="inner">
+      <div class="tw" style="margin-bottom:0">
+      <table>
+        <thead><tr><th>الشرط</th><th>السطر</th><th>القرار</th></tr></thead>
+        <tbody>
+          <tr><td><code>!rendersTemplate()</code></td><td class="ltr">:113</td><td>يُتخطّى — مثل <code>delete</code></td></tr>
+          <tr><td>القالب غير موجود</td><td class="ltr">:118</td><td>تحذير ويُتخطّى</td></tr>
+          <tr><td><code>isParameterized()</code></td><td class="ltr">:123</td><td>الخطوة 12</td></tr>
+          <tr><td>غير ذلك</td><td class="ltr">:126</td><td>صفحة واحدة ← الخطوة 14</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">12</span><h3>المسار المُعامَل: صفحة لكل عنصر</h3><span class="where">CodeGenerator.java:144</span></div></header>
+    <div class="inner">
+      <div class="cmd">if (!route.canExpand()) → تحذير + صفحة واحدة بلا بيانات       <span class="c">:146</span>
+collection = moduleVars.get(route.collectionName)            <span class="c">:154</span>
+if (!(collection instanceof List)) → تحذير ويُتخطّى           <span class="c">:155</span>
+
+for (Object item : items) {                                  <span class="c">:167</span>
+    context = baseContext(route)                             <span class="c">← الخطوة 13</span>
+    context.put(route.itemVarName, item)                     <span class="c">"product" → العنصر</span>
+    key = itemKey(item, route.itemKeyName)                   <span class="c">item.get("id")</span>
+    renderSinglePage(..., pageName(route, key))              <span class="c">← الخطوة 14</span>
+}
+renderShellPage(route, template, renderer)                   <span class="c">← الخطوة 19</span></div>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">13</span><h3>بناء السياق</h3><span class="where">CodeGenerator.java:222</span></div></header>
+    <div class="inner">
+      <div class="cmd">context = new LinkedHashMap&lt;&gt;(moduleVars);          <span class="c">ابدأ ببيانات الوحدة</span>
+for (entry : route.context.entrySet())
+    if (entry.getValue() != null || !context.containsKey(entry.getKey()))
+        context.put(entry.getKey(), entry.getValue());  <span class="c">ثم دع الوسائط تطغى</span></div>
+      <p class="note warn"><b>الشرط الذي يُسأل عنه</b>وسيطٌ قُيّم إلى <code>null</code> لا يعني «القيمة عدم» بل «لم نستطع تقييمه ساكناً». فلو كتبناه فوق متغيّر وحدة موجود لأبدلنا معلومةً بجهل. الشرط يقول: اكتب إن كانت لديك قيمة حقيقية، أو إن لم يكن هناك ما تكتب فوقه أصلاً.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">14</span><h3>عرض صفحة واحدة وكتابتها</h3><span class="where">CodeGenerator.java:207</span></div></header>
+    <div class="inner">
+      <div class="cmd">String html = renderer.render(template, context);     <span class="c">← الخطوة 15، كل العمل هنا</span>
+Path target = config.outputDir.resolve(fileName);
+Files.write(target, html.getBytes(StandardCharsets.UTF_8));
+pagesWritten.add(fileName);                           <span class="c">← يُستعمل في الخطوة 20</span>
+pagesGenerated++;</div>
+      <p class="what">الصفحة تُبنى كاملةً في الذاكرة ثم تُكتب مرّة واحدة. لا كتابة تدريجية.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">15</span><h3>دخول محرّك العرض</h3><span class="where">JinjaRenderer.java:65</span></div></header>
+    <div class="inner">
+      <div class="cmd">public String render(Template template, Map&lt;String,Object&gt; context) {
+    inheritanceStack.clear();
+    StringBuilder out = new StringBuilder();
+    <span class="c">// The context is copied so {% set %} in one page cannot leak into the next.</span>
+    renderTemplate(template, new LinkedHashMap&lt;&gt;(context), out, new HashMap&lt;&gt;());
+    return out.toString();
+}</div>
+      <p class="note"><b>نسخ السياق</b>حتى لا يؤثّر <code>{% set %}</code> في صفحة على الصفحة التالية.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">16</span><h3>الوراثة: الابن يُجمَع، والأب يُعرَض</h3><span class="where">JinjaRenderer.java:81</span></div></header>
+    <div class="inner">
+      <div class="cmd">extendsBlock = findExtends(child)                       <span class="c">:85</span>
+if (null) { renderNodes(child); return; }               <span class="c">:86  لا وراثة</span>
+
+if (!inheritanceStack.add(parentName)) → دورة! بلّغ    <span class="c">:92</span>
+parent = templateRegistry.get(parentName)               <span class="c">:97  مفقود؟ بلّغ</span>
+
+merged = copy(overrides)
+for (block : collectBlocks(child))
+    merged.putIfAbsent(name, block)                     <span class="c">:108  الابن الأعمق يفوز</span>
+
+renderTemplate(<b>parent</b>, merged)                        <span class="c">:111  الأب هو ما يُعرَض</span></div>
+      <p class="note crit"><b>نتيجة يُسأل عنها</b>ما دام الأب هو ما يُعرَض، فإنّ أيّ محتوى في قالب ابن <b>خارج</b> أيّ <code>{% block %}</code> لا يصل إليه أحد — يُحذف بصمت. مُختبَر عملياً. وهذا سلوك Jinja الحقيقي نفسه.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">17</span><h3>قلب المحرّك: توزيع العقد</h3><span class="where">JinjaRenderer.java:149</span></div></header>
+    <div class="inner">
+      <div class="cmd">renderNode(node):
+    DocType         → اكتب الإعلان                        <span class="c">:153</span>
+    NormalText      → اكتب النص كما هو                     <span class="c">:156</span>
+    JinjaExpression → eval() ثم اكتب الناتج                <span class="c">:159  ← الخطوة 18</span>
+    NodeBody        → اعرض الأبناء مفصولين بسطر            <span class="c">:163</span>
+    IfBlock         → renderIf()                          <span class="c">:166  :223</span>
+    ForBlock        → renderFor()                         <span class="c">:169  ← الخطوة 19</span>
+    InheritedBlock  → renderBlock()                       <span class="c">:172  :358</span>
+    SetStatement    → context.put(...)                    <span class="c">:175</span>
+    HtmlElement     → renderHtmlElement()                 <span class="c">:185  ← الخطوة 20</span>
+    غير ذلك         → node.toString()                     <span class="c">:188  ← فخّ</span></div>
+      <p class="note warn"><b>الفرع الأخير فخّ</b>نوع عقدة جديد نُسي إضافته هنا يسقط إلى <code>toString()</code> فيظهر نصّ القالب الخام في الصفحة — <b>بصمت</b>. الحلّ الصحيح دالّة <code>accept()</code> على <code>Node</code> ليصير النسيان خطأ تصريف.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">18</span><h3>تقييم ما بين القوسين</h3><span class="where">ExpressionEvaluator.java:94</span></div></header>
+    <div class="inner">
+      <div class="cmd">{{ product.name }}          → resolveName("product")  :134  ثم member()  :216
+{{ product.price }}         → member على خريطة، المفتاح غائب؟ بلّغ بالمفاتيح المتاحة
+{{ "%.2f"|format(price) }}  → evalPipe :318 → applyFilter :327 → formatFilter :383
+{{ url_for('detail', ...) }}→ evalPrimary :169 يكشف الاستدعاء → callFunction :262</div>
+      <p class="note"><b>ذكاء صغير</b>‏<code>evalPrimary</code> يفحص أولاً: هل الذرّة معرّف <b>ويتبعها استدعاء مباشرةً</b>؟ لولا ذلك لبحث المقيّم عن متغيّر اسمه <code>url_for</code> في السياق فلم يجده وأبلغ عن اسم غير معرَّف.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">19</span><h3>الحلقة</h3><span class="where">JinjaRenderer.java:261</span></div></header>
+    <div class="inner">
+      <div class="cmd">items = asIterable(eval(iterable))      <span class="c">:326  قائمة · قاموس→entrySet · نصّ→محارف</span>
+if (items.isEmpty()) → اعرض ElseBlock ثم توقّف          <span class="c">:267</span>
+
+for (index in items) {
+    scope = <b>copy</b>(context)                  <span class="c">:281  نسخة جديدة كل دورة</span>
+    bindLoopVars(scope, names, item)       <span class="c">:290  يدعم {% for k,v in d %}</span>
+    scope.put("loop", loopMetadata(...))   <span class="c">:283  index/first/last/length</span>
+    renderUntilBranch(body, scope)         <span class="c">:284  يتوقّف عند أول elif/else</span>
+}</div>
+      <p class="note ok"><b>سؤالان في خطوة واحدة</b>«لماذا نسخة كل دورة؟» حتى لا يتسرّب متغيّر الحلقة بعد <code>{% endfor %}</code>. «ولماذا <code>renderUntilBranch</code>؟» لأن <code>{% else %}</code> في قاعدتنا <b>ابن</b> لجسم الحلقة لا شقيق، فلو عُرض الجسم كاملاً لطُبع في كل دورة.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">20</span><h3>كتابة عنصر HTML</h3><span class="where">JinjaRenderer.java:370</span></div></header>
+    <div class="inner">
+      <div class="cmd">out.append('&lt;').append(element.<b>tagName</b>);        <span class="c">اسم وسم الفتح</span>
+renderAttributes(...)                          <span class="c">:408  أربعة أنواع خصائص</span>
+if (selfClosing) { out.append("/&gt;"); return; }
+out.append('&gt;');
+renderNode(body, ...)                          <span class="c">تعاود على الجسم</span>
+out.append("&lt;/").append(element.<b>tagName</b>).append('&gt;');</div>
+      <p class="note warn"><b>لاحظ</b>اسم وسم الإغلاق يُعاد بناؤه من <b>وسم الفتح</b>، فاسم الإغلاق الأصلي يُهمَل. لذلك <code>&lt;div&gt;x&lt;/p&gt;</code> يخرج <code>&lt;div&gt;x&lt;/div&gt;</code> — «إصلاح صامت»، قيد موثّق.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">21</span><h3>تحويل url_for إلى اسم ملف</h3><span class="where">CodeGenerator.java:248</span></div></header>
+    <div class="inner">
+      <div class="cmd">route = routesByName.get(routeName)     <span class="c">مجهول؟ بلّغ وأعِد "#"</span>
+if (!rendersTemplate())                <span class="c">:254  مثل delete → "#"</span>
+if (!isParameterized()) return pageName(route, null)
+for (declared : route.params)          <span class="c">استعمل المعامل الذي يعلنه المسار</span>
+    if (params.containsKey(declared)) return pageName(route, params.get(declared))</div>
+      <p class="note ok"><b>ضمانة مهمّة</b>‏<code>urlFor</code> يستدعي <code>pageName</code> — <b>نفس الدالّة</b> التي يستعملها التوليد لتسمية الملف (السطر 273). فمصدر الأسماء واحد، ولا يمكن أن يشير رابط إلى ملفّ غير موجود بسبب اختلاف تسمية.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">22</span><h3>الصفحة الفارغة</h3><span class="where">CodeGenerator.java:192</span></div></header>
+    <div class="inner">
+      <div class="cmd">context.put(route.itemVarName, new LinkedHashMap&lt;&gt;());   <span class="c">عنصر فارغ</span>
+suppressProblems = true;                                 <span class="c">:199</span>
+try   { renderSinglePage(..., pageName(route, null)); }
+finally { suppressProblems = false; }</div>
+      <p class="what">تُنفَّذ <b>بعد</b> حلقة العناصر لا قبلها. كلّ حقل فيها يخرج خالياً، ولأن كل بحث عن مفتاح في خريطة فارغة سيُبلَّغ عنه تُكتم التحذيرات: متوقّعة، فهي ضجيج لا اكتشاف.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">23</span><h3>حذف صفحات البناء السابق</h3><span class="where">CodeGenerator.java:303</span></div></header>
+    <div class="inner">
+      <div class="cmd">stale = كل *.html في المخرجات ليست في pagesWritten
+for (page : stale) { Files.delete(page); log.info("Removed stale page " + ...); }</div>
+      <p class="note ok"><b>خطوة أُضيفت لإصلاح عيب حقيقي</b>كان المولّد يكتب ويستبدل ولا يحذف، فحذف منتج يترك صفحته على القرص ببياناتها القديمة. ونحذف <b>ما لم يُكتَب في هذا التشغيل</b> بدل مسح المجلّد أوّلاً — فلا توجد لحظة يكون فيها المُخرَج فارغاً، وفشلٌ في منتصف التوليد يترك صفحات البناء السابق سليمة.</p>
+    </div>
+  </div>
+
+  <div class="step" style="--sc:var(--stage2)">
+    <header><div class="top"><span class="num">24</span><h3>نسخ الملفات الساكنة</h3><span class="where">CodeGenerator.java:322</span></div></header>
+    <div class="inner">
+      <div class="cmd">STATIC_ASSETS = {"app.py", "style.css", "script.js"}     <span class="c">CompilerConfig:32</span>
+Files.copy(source, target, REPLACE_EXISTING);            <span class="c">بلا أيّ تحويل</span></div>
+      <p class="note"><b>لماذا app.py في المخرجات؟</b>ليكون المُخرَج مكتفياً بذاته للمراجعة: بجانب الصفحات مصدرُها. ويُتحقَّق من تطابق البايتات بـ MD5 في <code>check.ps1</code>. و<code>script.js</code> غير موجود فيُسجَّل «skipped».</p>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- ============================================ -->
+<section id="tatabbu">
+  <h2 style="--sc:var(--accent)">تتبّع صفحة واحدة من أوّلها إلى آخرها</h2>
+  <p class="lede">لو سُئلت «اشرح لي كيف وُلِّدت هذه الصفحة بالذات»، هذا هو الجواب لـ <code>product_detail_1.html</code>.</p>
+
+  <div class="cmd"><b>app.py:29</b>   @app.route('/product/&lt;int:product_id&gt;')
+              def detail(product_id):
+                  product = next((p for p in products if p["id"] == product_id), None)
+                  return render_template('product_detail.jinja', product=product)
+     │
+  <span class="c">خطوة 2</span>   moduleVars["products"] = [ {id:1,name:"Wireless Headphones",…}, … ]
+  <span class="c">خطوة 4</span>   params = ["product_id"]
+  <span class="c">خطوة 5</span>   templateName = "product_detail.jinja"   context = {product: null}
+  <span class="c">خطوة 6</span>   collection="products"  itemVar="product"  itemKey="id"
+     ▼
+  <span class="c">خطوة 11</span>  isParameterized() = true  →  renderParameterizedRoute
+  <span class="c">خطوة 12</span>  العنصر الأول = {id:1, name:"Wireless Headphones", price:79.99, …}
+  <span class="c">خطوة 13</span>  context = {app:null, products:[…], product:{id:1,…}}
+  <span class="c">خطوة 12</span>  key = 1   →   pageName = "product_detail_1.html"
+     ▼
+  <span class="c">خطوة 15</span>  render(product_detail.jinja, context)
+  <span class="c">خطوة 16</span>  {% extends "base.jinja" %}  →  يُجمع title+content ثم يُعرَض <b>base</b>
+  <span class="c">خطوة 17</span>  base يصل إلى {% block content %} → يستبدله بجسم الابن
+  <span class="c">خطوة 18</span>  {{ product.name }}  → "Wireless Headphones"
+             {{ "%.2f"|format(product.price) }} → "79.99"
+  <span class="c">خطوة 21</span>  {{ url_for('edit', product_id=product.id) }} → "edit_product_1.html"
+  <span class="c">خطوة 20</span>  &lt;div&gt; &lt;img/&gt; &lt;h2&gt; … تُكتب بأسمائها وخصائصها
+     ▼
+  <span class="c">خطوة 14</span>  Files.write(output/product_detail_1.html, 1972 bytes)</div>
+</section>
+
+<hr>
+
+<!-- ============================================ -->
+<section id="khulasa">
+  <h2 style="--sc:var(--accent)">جدول الخلاصة — احفظ هذا وحده إن لم تحفظ غيره</h2>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>#</th><th>الخطوة</th><th>الملف:السطر</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>استدعاء الاستخراج</td><td class="ltr">FlaskCompiler:113</td></tr>
+      <tr><td>2</td><td>مروران: متغيّرات الوحدة ثم المسارات</td><td class="ltr">PythonDataExtractor:60</td></tr>
+      <tr><td>3</td><td>تحويل العقد إلى قيم جافا</td><td class="ltr">PythonDataExtractor:248</td></tr>
+      <tr><td>4</td><td>اكتشاف <code>@app.route</code> ومعاملاته</td><td class="ltr">PythonDataExtractor:86</td></tr>
+      <tr><td>5</td><td>القالب ووسائطه</td><td class="ltr">PythonDataExtractor:129</td></tr>
+      <tr><td>6</td><td>قراءة تعبير المولّد</td><td class="ltr">PythonDataExtractor:162</td></tr>
+      <tr><td>7</td><td><b>الحدّ الفاصل</b></td><td class="ltr">RouteInfo.java</td></tr>
+      <tr><td>8</td><td>إنشاء المولّد</td><td class="ltr">FlaskCompiler:141</td></tr>
+      <tr><td>9</td><td>بوّابة الأخطاء الدلالية</td><td class="ltr">CodeGenerator:86</td></tr>
+      <tr><td>10</td><td>قراءة البيانات وفهرسة المسارات</td><td class="ltr">CodeGenerator:95</td></tr>
+      <tr><td>11</td><td>الحلقة على المسارات</td><td class="ltr">CodeGenerator:112</td></tr>
+      <tr><td>12</td><td>صفحة لكل عنصر</td><td class="ltr">CodeGenerator:144</td></tr>
+      <tr><td>13</td><td>بناء السياق</td><td class="ltr">CodeGenerator:222</td></tr>
+      <tr><td>14</td><td>العرض والكتابة</td><td class="ltr">CodeGenerator:207</td></tr>
+      <tr><td>15</td><td>دخول المحرّك</td><td class="ltr">JinjaRenderer:65</td></tr>
+      <tr><td>16</td><td>الوراثة</td><td class="ltr">JinjaRenderer:81</td></tr>
+      <tr><td>17</td><td>توزيع العقد</td><td class="ltr">JinjaRenderer:149</td></tr>
+      <tr><td>18</td><td>تقييم التعابير</td><td class="ltr">ExpressionEvaluator:94</td></tr>
+      <tr><td>19</td><td>الحلقة</td><td class="ltr">JinjaRenderer:261</td></tr>
+      <tr><td>20</td><td>عناصر HTML</td><td class="ltr">JinjaRenderer:370</td></tr>
+      <tr><td>21</td><td><code>url_for</code> ← اسم ملف</td><td class="ltr">CodeGenerator:248</td></tr>
+      <tr><td>22</td><td>الصفحة الفارغة</td><td class="ltr">CodeGenerator:192</td></tr>
+      <tr><td>23</td><td>حذف الصفحات القديمة</td><td class="ltr">CodeGenerator:303</td></tr>
+      <tr><td>24</td><td>نسخ الملفات الساكنة</td><td class="ltr">CodeGenerator:322</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="call ok">
+    <h4>لو نسيت كل شيء، احفظ هذه الأربع</h4>
+    <ol style="margin-bottom:0">
+      <li><b>الخطوة 7</b> — <code>RouteInfo</code> هو الحدّ. لا تعبره عقدة من شجرة بايثون.</li>
+      <li><b>الخطوة 9</b> — البوّابة أولاً: خطأ دلالي واحد = صفر ملفات.</li>
+      <li><b>الخطوة 16</b> — الأب هو ما يُعرَض، والابن يساهم بكتله فقط.</li>
+      <li><b>الخطوة 21</b> — <code>urlFor</code> و<code>pageName</code> نفس المصدر، فالروابط لا تكذب.</li>
+    </ol>
+  </div>
+
+  <div class="call">
+    <h4>الأمر الذي يثبت كل ما سبق</h4>
+    <div class="cmd" style="margin:8px 0 0">.\verify-generation.ps1</div>
+    <p style="margin-top:12px">‏15 فحصاً على التوليد وإعادة التوليد: اكتمال الصفحات، أمانة البيانات، سلامة كل رابط محلّي، الوراثة، عدد دورات الحلقة، الثبات، الإضافة، التعديل، الحذف. كلّها تمرّ.</p>
+  </div>
+</section>
+
+<footer>
+  أرقام الأسطر مطابقة للشيفرة الحالية · كل سلوك مذكور هنا جُرّب على المشروع فعلياً
+</footer>
+
+</div>
+</div>

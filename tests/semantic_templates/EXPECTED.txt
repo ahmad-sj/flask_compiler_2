@@ -1,0 +1,8 @@
+tpl_missing	which does not exist in templates/
+extends_missing	', which does not exist
+unknown_test	unknown test 'is 
+unknown_function	call to unknown function '
+urlfor_noargs	url_for() requires a route name
+urlfor_unknown	refers to no route defined in app.py
+unknown_filter	unknown filter '
+var_not_provided	is not provided to this template

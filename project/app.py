@@ -16,6 +16,10 @@ products = [
     {"id": 3, "name": "Smartwatch", "price": 249.99,
      "details": "Fitness tracking, heart rate monitor, and GPS.",
      "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400"},
+
+    {"id": 4, "name": "Test", "price": 99.99,
+     "details": "Test",
+     "image": "https://images.unsplash.com/photo-1523276335684-37898b6baf30?w=400"},
 ]
 
 # Helper to get the next id

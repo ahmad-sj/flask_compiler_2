@@ -39,7 +39,9 @@ import models.jinja.expressions.PrimaryExpression;
 import models.jinja.expressions.TernaryExpression;
 import models.jinja.expressions.UnaryExpression;
 import models.jinja.trailers.CallTrailer;
+import symbols.Scope;
 import symbols.SemanticError;
+import symbols.SymbolTable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -73,6 +75,17 @@ public class TemplateSemanticAnalyzer {
     private final List<RouteInfo> routes;
     private final Set<String> moduleVarNames;
 
+    /**
+     * The template symbol table, shared with NodeVisitor and reported in
+     * symbol_table.txt.
+     *
+     * The checks below resolve every name through it rather than through a
+     * private set of strings, so the scope chain the table models is the one
+     * that decides whether a name is visible, and the printed table shows the
+     * scopes the analysis actually used.
+     */
+    private final SymbolTable symbolTable;
+
     private final List<SemanticError> errors = new ArrayList<>();
     private final Set<String> reported = new LinkedHashSet<>();
     private final Set<String> routeNames = new LinkedHashSet<>();
@@ -82,10 +95,12 @@ public class TemplateSemanticAnalyzer {
 
     public TemplateSemanticAnalyzer(Map<String, Template> templates,
                                     List<RouteInfo> routes,
-                                    Set<String> moduleVarNames) {
+                                    Set<String> moduleVarNames,
+                                    SymbolTable symbolTable) {
         this.templates = templates;
         this.routes = routes;
         this.moduleVarNames = moduleVarNames;
+        this.symbolTable = symbolTable;
         for (RouteInfo route : routes) routeNames.add(route.name);
     }
 
@@ -121,10 +136,14 @@ public class TemplateSemanticAnalyzer {
 
     /** Walks a template plus its inheritance chain with one route's context. */
     private void analyzeTemplateForRoute(Template template, RouteInfo route) {
-        Set<String> context = new LinkedHashSet<>(moduleVarNames);
-        context.addAll(route.context.keySet());
+        // The route's context is the outermost scope every template in the
+        // chain resolves against. It hangs off the table's global scope, so it
+        // is reported alongside the scopes NodeVisitor built while parsing.
+        Scope routeScope = open(symbolTable.globalScope, "route " + route.name + " context");
+        for (String name : moduleVarNames) define(routeScope, name, "module var");
+        for (String name : route.context.keySet()) define(routeScope, name, "route kwarg");
         // A parameterized route binds the selected item under its own name.
-        if (route.itemVarName != null) context.add(route.itemVarName);
+        if (route.itemVarName != null) define(routeScope, route.itemVarName, "route item");
 
         Set<String> visited = new HashSet<>();
         Template current = template;
@@ -133,7 +152,7 @@ public class TemplateSemanticAnalyzer {
         // Walk child first, then each ancestor, all with the same context.
         while (current != null && visited.add(currentName)) {
             currentTemplate = currentName;
-            walk(current.nodes, new LinkedHashSet<>(context));
+            walk(current.nodes, open(routeScope, "template " + currentName));
 
             ExtendsBlock extends_ = findExtends(current);
             if (extends_ == null) break;
@@ -177,13 +196,13 @@ public class TemplateSemanticAnalyzer {
     //  NODE WALK
     // ═══════════════════════════════════════════════════════════════════════
 
-    /** scope is the set of names visible here; blocks extend a copy of it. */
-    private void walk(List<Node> nodes, Set<String> scope) {
+    /** scope is where names resolve from here; each block opens a child of it. */
+    private void walk(List<Node> nodes, Scope scope) {
         if (nodes == null) return;
         for (Node node : nodes) walkNode(node, scope);
     }
 
-    private void walkNode(Node node, Set<String> scope) {
+    private void walkNode(Node node, Scope scope) {
         if (node == null) return;
 
         if (node instanceof JinjaExpression) {
@@ -195,28 +214,28 @@ public class TemplateSemanticAnalyzer {
         } else if (node instanceof IfBlock) {
             IfBlock block = (IfBlock) node;
             checkExpression(block.condition, scope, block.getLineNumber());
-            walkNode(block.nodeBody, new LinkedHashSet<>(scope));
+            walkNode(block.nodeBody, open(scope, "if block at line " + block.getLineNumber()));
 
         } else if (node instanceof ElifBlock) {
             ElifBlock block = (ElifBlock) node;
             checkExpression(block.condition, scope, block.getLineNumber());
-            walkNode(block.nodeBody, new LinkedHashSet<>(scope));
+            walkNode(block.nodeBody, open(scope, "elif block at line " + block.getLineNumber()));
 
         } else if (node instanceof ElseBlock) {
-            walkNode(((ElseBlock) node).nodeBody, new LinkedHashSet<>(scope));
+            walkNode(((ElseBlock) node).nodeBody, open(scope, "else block at line " + node.getLineNumber()));
 
         } else if (node instanceof ForBlock) {
             walkFor((ForBlock) node, scope);
 
         } else if (node instanceof InheritedBlock) {
-            walkNode(((InheritedBlock) node).nodeBody, new LinkedHashSet<>(scope));
+            walkNode(((InheritedBlock) node).nodeBody,
+                    open(scope, "block " + ((InheritedBlock) node).blockName));
 
         } else if (node instanceof SetStatement) {
             SetStatement set = (SetStatement) node;
             checkExpression(set.expr, scope, set.getLineNumber());
             // Visible from this point on, so add after checking the value.
-            String name = nameOf(set.id);
-            if (name != null) scope.add(name);
+            define(scope, nameOf(set.id), "set");
 
         } else if (node instanceof HtmlElement) {
             walkHtml((HtmlElement) node, scope);
@@ -228,21 +247,17 @@ public class TemplateSemanticAnalyzer {
      * The loop variables exist only inside the body. Using one after
      * {% endfor %} is a real error the renderer would silently render as blank.
      */
-    private void walkFor(ForBlock block, Set<String> scope) {
+    private void walkFor(ForBlock block, Scope scope) {
         checkExpression(block.iterable, scope, block.getLineNumber());
 
-        Set<String> inner = new LinkedHashSet<>(scope);
+        Scope inner = open(scope, "for block at line " + block.getLineNumber());
         if (block.loopVars != null) {
-            for (Node var : block.loopVars) {
-                String name = nameOf(var);
-                if (name != null) inner.add(name);
-            }
+            for (Node var : block.loopVars) define(inner, nameOf(var), "loop var");
         }
-        inner.add("loop");
         walkNode(block.nodeBody, inner);
     }
 
-    private void walkHtml(HtmlElement element, Set<String> scope) {
+    private void walkHtml(HtmlElement element, Scope scope) {
         if (element.attrList != null) {
             for (Node attr : element.attrList) {
                 if (!(attr instanceof QuotedAttribute)) continue;
@@ -265,7 +280,7 @@ public class TemplateSemanticAnalyzer {
     //  EXPRESSIONS
     // ═══════════════════════════════════════════════════════════════════════
 
-    private void checkExpression(Node expr, Set<String> scope, int line) {
+    private void checkExpression(Node expr, Scope scope, int line) {
         if (expr == null) return;
 
         if (expr instanceof IdType) {
@@ -352,7 +367,7 @@ public class TemplateSemanticAnalyzer {
      * Checks a name/member/call chain. Only the base name is resolved against
      * the context; member names after a dot are data keys, not variables.
      */
-    private void checkPrimary(PrimaryExpression primary, Set<String> scope, int line) {
+    private void checkPrimary(PrimaryExpression primary, Scope scope, int line) {
         boolean isCall = primary.trailerList != null
                 && !primary.trailerList.isEmpty()
                 && primary.trailerList.get(0) instanceof CallTrailer;
@@ -374,7 +389,7 @@ public class TemplateSemanticAnalyzer {
         }
     }
 
-    private void checkCall(String funcName, CallTrailer call, Set<String> scope, int line) {
+    private void checkCall(String funcName, CallTrailer call, Scope scope, int line) {
         if (!ExpressionEvaluator.SUPPORTED_FUNCTIONS.contains(funcName)) {
             report(new SemanticError(SemanticError.ErrorType.UNDEFINED_VARIABLE, line, funcName,
                     at() + "call to unknown function '" + funcName + "()'"));
@@ -404,13 +419,13 @@ public class TemplateSemanticAnalyzer {
         }
     }
 
-    private void checkArguments(CallTrailer call, Set<String> scope, int line) {
+    private void checkArguments(CallTrailer call, Scope scope, int line) {
         for (Node node : argumentsOf(call)) {
             checkExpression(((Argument) node).expr, scope, line);
         }
     }
 
-    private void checkFilter(Node filterNode, Set<String> scope, int line) {
+    private void checkFilter(Node filterNode, Scope scope, int line) {
         String name;
         if (filterNode instanceof FilterExpression) {
             FilterExpression filter = (FilterExpression) filterNode;
@@ -433,10 +448,38 @@ public class TemplateSemanticAnalyzer {
         }
     }
 
-    private void checkName(String name, Set<String> scope, int line) {
-        if (name == null || BUILTIN_NAMES.contains(name) || scope.contains(name)) return;
+    private void checkName(String name, Scope scope, int line) {
+        if (name == null || BUILTIN_NAMES.contains(name) || scope.resolve(name) != null) return;
         report(new SemanticError(SemanticError.ErrorType.UNDEFINED_VARIABLE, line, name,
                 at() + "'" + name + "' is not provided to this template"));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  SCOPES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Opens a nested scope inside parent.
+     *
+     * The constructor registers the new scope as a child of its parent, so the
+     * scopes opened here appear in the table that symbol_table.txt prints: what
+     * is reported is the structure the checks actually resolved against.
+     */
+    private Scope open(Scope parent, String name) {
+        return new Scope(name, parent);
+    }
+
+    /**
+     * Records a name as visible from this scope inward.
+     *
+     * Scope.define throws on a duplicate, which is right for a language that
+     * forbids redefinition but not for Jinja: {% set x %} twice in one block is
+     * legal and simply rebinds. A name already present here needs no second
+     * entry, and one present only in an enclosing scope is a deliberate shadow.
+     */
+    private void define(Scope scope, String name, String kind) {
+        if (name == null || scope.symbols.containsKey(name)) return;
+        scope.define(name, kind, "Node", null);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

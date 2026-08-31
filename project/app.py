@@ -70,12 +70,17 @@ def edit(product_id):
         return redirect(url_for('detail', product_id=product_id))
     return render_template('edit_product.jinja', product=product)
 
-@app.route('/product/<int:product_id>/delete', methods=['POST'])
+@app.route('/product/<int:product_id>/delete', methods=['GET', 'POST'])
 def delete(product_id):
-    target = next((p for p in products if p["id"] == product_id), None)
-    if target:
-        products.remove(target)
-    return redirect(url_for('index'))
+    product = next((p for p in products if p["id"] == product_id), None)
+    if not product:
+        return "Product not found", 404
+
+    if request.method == 'POST':
+        products.remove(product)
+        return redirect(url_for('index'))
+
+    return render_template('delete_product.jinja', product=product)
 
 if __name__ == '__main__':
     app.run(debug=True)
